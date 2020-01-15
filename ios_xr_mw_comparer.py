@@ -39,6 +39,9 @@ def task():
 			del sys.argv[index]
 			del sys.argv[index]
 			break
+    for index, arg in enumerate(sys.argv):
+        if arg in ['--help', '-h']:
+			break
     if len(sys.argv) > 1:
         is_error = True
     else:
@@ -47,7 +50,7 @@ def task():
                 is_error = True
     if is_error:
 		print(str(sys.argv))
-		print("Usage: python {sys.argv[0]} [--pre <filename>|--post <filename>][--compare <filename>]")
+		print("Usage: python {" + sys.argv[0] + "} [--pre <filename>|--post <filename>][--compare <filename>]")
 		return
     else:
 		if pre:

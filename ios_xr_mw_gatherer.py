@@ -1,4 +1,10 @@
-__copyright__ = "Copyright (c) 2018 Cisco Systems. All rights reserved."
+__author__     = "Sam Milstead"
+__copyright__  = "Copyright 2020 (C) Cisco TAC"
+__credits__    = "Sam Milstead"
+__version__    = "1.0.1"
+__maintainer__ = "Sam Milstead"
+__email__      = "smilstea@cisco.com"
+__status__     = "alpha"
 global paramiko, telnetlib
 import paramiko, telnetlib
 global os, time
@@ -12,8 +18,7 @@ def task():
     key = 1
     is_error = False
     ssh = False
-    pre = ''
-    post = ''
+    file = ''
     ipv4_addr = ''
     username = ''
     for index, arg in enumerate(sys.argv):
@@ -39,6 +44,9 @@ def task():
 			ssh = True
 			del sys.argv[index]
 			break
+    for index, arg in enumerate(sys.argv):
+        if arg in ['--help', '-h']:
+			break
     if len(sys.argv) > 1:
         is_error = True
     else:
@@ -48,13 +56,13 @@ def task():
 
     if is_error:
 		print(str(sys.argv))
-		print("Usage: python {sys.argv[0]} [--file <filename>][--ipv4addr <ipv4 address>][--username <username>]{--ssh}")
+		print("Usage: python {" + sys.argv[0] + "} [--file <filename>][--ipv4addr <ipv4 address>][--username <username>](--ssh)")
 		return
     else:
 		if file:
 			filename = file
 			print("Filename: " + filename)
-		elif not filet:
+		elif not file:
 			print("Please use --file and select a filename")
 			return
 		if not username:
@@ -101,9 +109,11 @@ def task():
 		print("Field(s) are missing for logging into the router")
 		return
 def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands):
-    """
-    SSH connection to router
-    """
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.0.1"
+	###__status__     = "alpha"
+	#ssh login and actions
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -112,12 +122,28 @@ def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_comma
 		remote_conn = client.invoke_shell()
 		regex_list = re.compile('RP\S+#')
 		data = ""
-		data = remote_conn.recv("#")
-		data += remote_conn.recv(" ")
-		if len(data) == 0:
+		data_temp = ""
+		try:
+			data = remote_conn.recv(4096)
+			outfile.write(data)
+			data_temp += data
+			while data:
+				data = remote_conn.recv(4096)
+				data_temp += data
+				outfile.write(data)
+				match = regex_list.search(data_temp)
+				if match:
+					prompt = match.group(0)
+					raise
+				if len(data_temp) == 0:
+					print("*** Connection terminated\r")
+					sys.exit(3)
+		except:
+			pass
+		if len(data_temp) == 0:
 			print("*** Connection terminated\r")
 			sys.exit(3)
-		match = regex_list.search(data)
+		match = regex_list.search(data_temp)
 		if match:
 			prompt = match.group(0)
 		else:
@@ -187,9 +213,11 @@ def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_comma
 		print("SSH exception raised by failures in SSH2 protocol negotiation or logic errors")
 		raise
 def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands):
-    """
-    Connect to a router via telnet
-    """
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.0.1"
+	###__status__     = "alpha"
+	#telnet login and actions
     try:
 		global tn
 		global prompt
@@ -219,7 +247,7 @@ def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_co
 		tn.read_until(prompt, 5)
 		outfile.write("**********")
 		tn.write("show platform" + "\n")
-		platform = tn.read_until(prompt,10)
+		platform = tn.read_until(prompt,20)
 		if 'A9K' in platform or 'A99' in platform:
 			commands.extend(asr9k_commands)
 		elif 'MSC' in platform or 'LSP' in platform or 'FP' in platform:
@@ -231,10 +259,15 @@ def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_co
 		i = 0
 		for command in commands:
 			i += 1
-			outfile.write("**********")
+			time.sleep(1)
+			tn.write("\n")
 			tn.write(command + "\n")
-			outfile.write(tn.read_until(prompt, 60))
+			time.sleep(1)
 			print("Command " + str(i) + " of " + str(commands_len) + " complete")
+			data = ''
+			while data.find(prompt) == -1:
+				data = tn.read_very_eager()
+			outfile.write(data)
 		tn.close()
 		outfile.close()
     except IOError as e:

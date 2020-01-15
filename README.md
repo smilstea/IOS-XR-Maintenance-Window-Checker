@@ -1,5 +1,5 @@
 # IOS-XR-Maintenance-Window-Checker
-a way to capture data from an IOS XR router and in a deterministic way find the differences and output any changes
+a way to capture data from an IOS XR router and in a deterministic way find the differences and output any changes in a simple to read manner
 
 
 ===
@@ -16,6 +16,7 @@ No installation is required or compiling of the scripts, only requirement is pyt
 - getpass
 - re
 
+
 ===
 Running the Scripts
 ===
@@ -27,6 +28,7 @@ python ios_xr_mw_comparer.py --pre pre_mw_file --post post_mw_file --compare com
 Syntax for each file is below:
 Usage: python ios_xr_mw_gatherer.py [--file <filename>][--ipv4addr <ipv4 address>][--username <username>]{--ssh}
 Usage: python ios_xr_mw_comparer.py [--pre <filename>|--post <filename>][--compare <filename>]
+
 
 ===
 Output

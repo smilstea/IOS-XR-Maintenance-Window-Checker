@@ -27,7 +27,9 @@ python ios_xr_mw_gatherer.py --file post_mw_file --ipv4addr 172.18.120.188 --use
 
 python ios_xr_mw_comparer.py --pre pre_mw_file --post post_mw_file --compare comparison_filename
 
+
 Syntax for each file is below:
+
 Usage: python ios_xr_mw_gatherer.py [--file <filename>][--ipv4addr <ipv4 address>][--username <username>]{--ssh}
 
 Usage: python ios_xr_mw_comparer.py [--pre <filename>|--post <filename>][--compare <filename>]

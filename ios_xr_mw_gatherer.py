@@ -1,7 +1,7 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "1.0.1"
+__version__    = "1.1.0"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
@@ -15,6 +15,10 @@ import re
 
 
 def task():
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
     key = 1
     is_error = False
     ssh = False
@@ -76,22 +80,30 @@ def task():
 			print("Filename exists, please choose a non-existing filename")
 			return
 		outfile = open(filename, "a+")
+		commands = ['show platform', 'show install active summary', 'show interface description', 'show ipv6 interface brief', 'show memory summary loc all', 'show filesystem loc all',
+					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show bgp vrf all ipv4 unicast summary',
+					'show bgp vrf all ipv4 flowspec summary', 'show bgp vrf all ipv4 labeled-unicast summary', 'show bgp vrf all ipv4 multicast summary', 'show bgp vrf all ipv4 mvpn summary',
+					'show bgp vrf all ipv6 unicast summary', 'show bgp vrf all ipv6 flowspec summary', 'show bgp vrf all ipv6 multicast summary', 'show bgp vrf all ipv6 mvpn summary',
+					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show isis neighbor',
+					'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
+		crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
+		asr9k_commands = ['show pfm loc all']
+		ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
+		ncs6000_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link port s1 tx state down', 'admin show controller fabric link port s1 tx state mismatch',
+							'admin show controller fabric link port s1 rx state down', 'admin show controller fabric link port s1 rx state mismatch', 'admin show controller fabric link port fia tx state down',
+							'admin show controller fabric link port fia tx state mismatch', 'admin show controller fabric link port fia rx state down', 'admin show controller fabric link port fia rx state mismatch',
+							'admin show controller fabric link port s2 tx state down', 'admin show controller fabric link port s2 tx state mismatch', 'admin show controller fabric link port s2 rx state down',
+							'admin show controller fabric link port s2 rx state mismatch', 'admin show controller fabric link port s3 tx state down', 'admin show controller fabric link port s3 tx state mismatch',
+							'admin show controller fabric link port s3 rx state down', 'admin show controller fabric link port s3 rx state mismatch']
+		print("Proceeding with login to router")
+		password = getpass.getpass(prompt="Please enter your password:")
 		#######
         # SSH #
         #######
-		commands = ['show install active summary', 'show interface description', 'show ipv6 interface brief', 'show memory summary loc all', 'show filesystem loc all',
-					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show l2vpn xconnect',
-					'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show isis neighbor',
-					'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels', 'show bfd session']
-		crs_commands = ['admin show controller fabric plane all detail']
-		asr9k_commands = ['show pfm loc all']
-		ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
-		print("Proceeding with login to router")
-		password = getpass.getpass(prompt="Please enter your password:")
 		if ssh:
 			try:
 				port = 22
-				sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands)
+				sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands)
 			except TypeError:
 				return()
         ##########
@@ -101,17 +113,17 @@ def task():
 			try:
 				port = 23
 				print("Trying telnet")
-				telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands)
+				telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands)
 			except Exception as e:
 				print("Telnet error " + str(e))
 				return
     else:
 		print("Field(s) are missing for logging into the router")
 		return
-def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands):
+def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#ssh login and actions
     client = paramiko.SSHClient()
@@ -156,7 +168,7 @@ def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_comma
         #########################################################
         # SSH: XR connection and config terminal error handling #
         #########################################################
-		remote_conn.send("show platform\n")
+		remote_conn.send("show version\n")
 		time.sleep(1)
 		platform = ''
 		try:
@@ -174,12 +186,14 @@ def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_comma
 					raise
 		except:
 			pass
-		if 'A9K' in platform or 'A99' in platform:
+		if 'cisco ASR9K' in platform:
 			commands.extend(asr9k_commands)
-		elif 'MSC' in platform or 'LSP' in platform or 'FP' in platform:
+		elif 'isco CRS' in platform:
 			commands.extend(crs_commands)
-		elif 'NC55' in platform:
+		elif 'cisco NCS-5500' in platform:
 			commands.extend(ncs5500_commands)
+		elif 'cisco NCS-6000' in platform:
+			commands.extend(ncs6000_commands)
 		commands_len = len(commands)
 		i = 0
 		for command in commands:
@@ -212,10 +226,10 @@ def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_comma
     except paramiko.SSHException:
 		print("SSH exception raised by failures in SSH2 protocol negotiation or logic errors")
 		raise
-def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands):
+def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#telnet login and actions
     try:
@@ -246,28 +260,30 @@ def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_co
 		tn.write("term width 0\n")
 		tn.read_until(prompt, 5)
 		outfile.write("**********")
-		tn.write("show platform" + "\n")
-		platform = tn.read_until(prompt,20)
-		if 'A9K' in platform or 'A99' in platform:
+		tn.write("show version" + "\n")
+		platform = tn.read_until(prompt,60)
+		if 'cisco ASR9K' in platform:
 			commands.extend(asr9k_commands)
-		elif 'MSC' in platform or 'LSP' in platform or 'FP' in platform:
+		elif 'cisco CRS' in platform:
 			commands.extend(crs_commands)
-		elif 'NC55' in platform:
+		elif 'cisco NCS-5500' in platform:
 			commands.extend(ncs5500_commands)
+		elif 'cisco NCS-6000' in platform:
+			commands.extend(ncs6000_commands)
 		outfile.write(platform)
 		commands_len = len(commands)
 		i = 0
+		prompt2 = [prompt]
 		for command in commands:
 			i += 1
 			time.sleep(1)
 			tn.write("\n")
 			tn.write(command + "\n")
-			time.sleep(1)
 			print("Command " + str(i) + " of " + str(commands_len) + " complete")
-			data = ''
-			while data.find(prompt) == -1:
-				data = tn.read_very_eager()
-			outfile.write(data)
+		tn.write("exit\n")
+		print("Please wait while log session is written to file, this may take some time...")
+		output = tn.read_all()
+		outfile.write(output)
 		tn.close()
 		outfile.close()
     except IOError as e:

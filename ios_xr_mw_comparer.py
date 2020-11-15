@@ -1,7 +1,7 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "1.0.0"
+__version__    = "1.1.0"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
@@ -12,7 +12,7 @@ import re
 def task():
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform all the parsing and then pass values to other functions
 	#for making sense of the data and comparison tests
@@ -50,7 +50,7 @@ def task():
                 is_error = True
     if is_error:
 		print(str(sys.argv))
-		print("Usage: python {" + sys.argv[0] + "} [--pre <filename>|--post <filename>][--compare <filename>]")
+		print("Usage: python {" + sys.argv[0] + "} [--pre <filename>][|--post <filename>][--compare <filename>]")
 		return
     else:
 		if pre:
@@ -75,62 +75,72 @@ def task():
 		outfile = open(compare, "a+")
 		pre_file = open(pre, "r")
 		post_file = open(post, "r")
-		commands = ['show install active summary', 'show interface description', 'show ipv6 interface brief', 'show memory summary loc all', 'show filesystem loc all',
-					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show l2vpn xconnect',
-					'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show isis neighbor',
-					'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels', 'show bfd session']
-		crs_commands = ['admin show controller fabric plane all detail']
+		commands = ['show platform', 'show install active summary', 'show interface description', 'show ipv6 interface brief', 'show memory summary loc all', 'show filesystem loc all',
+					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show bgp vrf all ipv4 unicast summary',
+					'show bgp vrf all ipv4 flowspec summary', 'show bgp vrf all ipv4 labeled-unicast summary', 'show bgp vrf all ipv4 multicast summary', 'show bgp vrf all ipv4 mvpn summary',
+					'show bgp vrf all ipv6 unicast summary', 'show bgp vrf all ipv6 flowspec summary', 'show bgp vrf all ipv6 multicast summary', 'show bgp vrf all ipv6 mvpn summary',
+					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show isis neighbor',
+					'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
+		crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
 		asr9k_commands = ['show pfm loc all']
 		ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
+		ncs6000_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link port s1 tx state down', 'admin show controller fabric link port s1 tx state mismatch',
+							'admin show controller fabric link port s1 rx state down', 'admin show controller fabric link port s1 rx state mismatch', 'admin show controller fabric link port fia tx state down',
+							'admin show controller fabric link port fia tx state mismatch', 'admin show controller fabric link port fia rx state down', 'admin show controller fabric link port fia rx state mismatch',
+							'admin show controller fabric link port s2 tx state down', 'admin show controller fabric link port s2 tx state mismatch', 'admin show controller fabric link port s2 rx state down',
+							'admin show controller fabric link port s2 rx state mismatch', 'admin show controller fabric link port s3 tx state down', 'admin show controller fabric link port s3 tx state mismatch',
+							'admin show controller fabric link port s3 rx state down', 'admin show controller fabric link port s3 rx state mismatch']
 		####################
 		#get platform      #
 		####################
 		platform = "None"
 		pre_commands = {}
 		post_commands = {}
-		show_platform_found = False
+		show_version_found = False
 		end_of_command = False
 		command2 = str(commands[0])
 		for line in pre_file:
-			if 'show platform' in line:
-				print("found show platform in " + str(pre))
-				show_platform_found = True
-				if 'show platform' not in pre_commands.keys():
-						pre_commands['show platform' ] = ['show platform']
+			if 'show version' in line:
+				print("found show version in " + str(pre))
+				show_version_found = True
+				if 'show version' not in pre_commands.keys():
+						pre_commands['show version' ] = ['show version']
 			if end_of_command == True:
 				break
-			elif show_platform_found == True:
+			elif show_version_found == True:
 				if command2 in line:
 					end_of_command = True
 				else:
-					pre_commands['show platform'].append(line)
-					if 'A9K' in line or 'A99' in line:
+					pre_commands['show version'].append(line)
+					if 'cisco ASR9K' in line:
 						platform = 'asr9k'
-					elif 'MSC' in line or 'LSP' in line or 'FP' in line:
+					elif 'isco CRS' in line:
 						platform = 'crs'
-					elif 'NC55' in line:
+					elif 'cisco NCS-5500' in line:
 						platform = 'ncs5500'
+					elif 'cisco NCS-6000' in line:
+						platform = 'ncs6000'
 		else:
 			pre_file.close()
 		try:
 			pre_file.close()
 		except Exception as e:
 			pass
-		show_platform_found = False
+		show_version_found = False
 		end_of_command = False
 		for line in post_file:
-			if 'show platform' in line:
-				print("found show platform in " + str(post))
-				show_platform_found = True
-				if 'show platform' not in post_commands.keys():
-						post_commands['show platform' ] = ['show platform']
+			if 'show version' in line:
+				print("found show version in " + str(post))
+				show_version_found = True
+				if 'show version' not in post_commands.keys():
+						post_commands['show version' ] = ['show version']
 			if end_of_command == True:
 				pass
-			elif show_platform_found == True:
+			elif show_version_found == True:
 				if command2 in line:
 					end_of_command = True
 				else:
-					post_commands['show platform'].append(line)
+					post_commands['show version'].append(line)
 		else:
 			post_file.close()	
 		if platform == 'asr9k':
@@ -139,6 +149,8 @@ def task():
 			commands.extend(crs_commands)
 		elif platform == 'ncs5500':
 			commands.extend(ncs5500_commands)
+		elif platform == 'ncs6000':
+			commands.extend(ncs6000_commands)
 		##################################################
 		#put commands a dictionary and outputs in a list #
 		##################################################
@@ -192,31 +204,6 @@ def task():
 		##############################
 		#Start performing comparisons#
 		##############################
-		##############################
-		#show platform comparison    #
-		##############################
-		show_platform_pre_counters  = {}
-		show_platform_post_counters = {}
-		pre_totals = {}
-		post_totals = {}
-		platform_pre_list = []
-		platform_post_list = []
-		for value in pre_commands['show platform']:
-			platform_pre_list.append(value)
-		for value in post_commands['show platform']:
-			platform_post_list.append(value)		
-		try:
-			show_platform_pre_counters = show_platform_compare(platform_pre_list, platform)
-			show_platform_post_counters = show_platform_compare(platform_post_list, platform)
-			pre_totals = show_platform_totals(show_platform_pre_counters)
-			post_totals = show_platform_totals(show_platform_post_counters)
-			show_platform_pre_counters.update(pre_totals)
-			show_platform_post_counters.update(post_totals)
-		except Exception as e:
-			print("error " + str(e))
-		ext_text = 'Card States:'
-		show_platform_result = create_result('show platform', ext_text, show_platform_pre_counters, pre_totals, show_platform_post_counters)
-		response = print_results(show_platform_result, show_platform_pre_counters, show_platform_post_counters, outfile)
 		###########################################################################
 		#Parse command by command and call on magic and change detection logic    #
 		###########################################################################
@@ -239,7 +226,17 @@ def task():
 				continue
 			try:
 				verbose = True
-				if command == 'show install active summary':
+				if command == 'show platform':
+					pre_counters = show_platform_compare(pre_list, platform)
+					post_counters = show_platform_compare(post_list, platform)
+					pre_totals = show_platform_totals(pre_counters)
+					post_totals = show_platform_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = 'Card States:'
+					result = create_result('show platform', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show install active summary':
 					pre_counters = show_install_compare(pre_list)
 					post_counters = show_install_compare(post_list)
 					pre_totals = show_install_totals(pre_counters)
@@ -326,9 +323,109 @@ def task():
 					post_totals = show_bgp_all_all_summary_totals(post_counters)
 					pre_counters.update(pre_totals)
 					post_counters.update(post_totals)
+					bgp_post_active = post_counters
 					ext_text = '\nBGP Summary:'
 					result = create_result('show bgp all all summary', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv4 unicast summary':
+					pre_counters = show_bgp_vrf_all_ipv4_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv4_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv4_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv4_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv4 Unicast Summary:'
+					result = create_result('show bgp vrf all ipv4 unicast summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv4 flowspec summary':
+					pre_counters = show_bgp_vrf_all_ipv4_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv4_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv4_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv4_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv4 Flowspec Summary:'
+					result = create_result('show bgp vrf all ipv4 flowspec summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv4 labeled-unicast summary':
+					pre_counters = show_bgp_vrf_all_ipv4_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv4_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv4_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv4_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv4 Labeled-unicast Summary:'
+					result = create_result('show bgp vrf all ipv4 labeled-unicast summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv4 multicast summary':
+					pre_counters = show_bgp_vrf_all_ipv4_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv4_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv4_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv4_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv4 Multicast Summary:'
+					result = create_result('show bgp vrf all ipv4 multicast summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv4 mvpn summary':
+					pre_counters = show_bgp_vrf_all_ipv4_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv4_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv4_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv4_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv4 MVPN Summary:'
+					result = create_result('show bgp vrf all ipv4 mvpn summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv6 unicast summary':
+					pre_counters = show_bgp_vrf_all_ipv6_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv6_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv6_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv6_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv6 Unicast Summary:'
+					result = create_result('show bgp vrf all ipv6 unicast summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv6 flowspec summary':
+					pre_counters = show_bgp_vrf_all_ipv6_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv6_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv6_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv6_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv6 Flowspec Summary:'
+					result = create_result('show bgp vrf all ipv6 flowspec summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv6 multicast summary':
+					pre_counters = show_bgp_vrf_all_ipv6_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv6_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv6_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv6_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv6 Multicast Summary:'
+					result = create_result('show bgp vrf all ipv6 multicast summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show bgp vrf all ipv6 mvpn summary':
+					pre_counters = show_bgp_vrf_all_ipv6_summary_compare(pre_list)
+					post_counters = show_bgp_vrf_all_ipv6_summary_compare(post_list)
+					pre_totals = show_bgp_vrf_all_ipv6_summary_totals(pre_counters)
+					post_totals = show_bgp_vrf_all_ipv6_summary_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					bgp_post_active = post_counters
+					ext_text = '\nBGP VRF All IPv6 MVPN Summary:'
+					result = create_result('show bgp vrf all ipv6 mvpn summary', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
 				elif command == 'show l2vpn xconnect':
 					pre_counters = show_l2vpn_xconnect_compare(pre_list)
 					post_counters = show_l2vpn_xconnect_compare(post_list)
@@ -366,8 +463,22 @@ def task():
 					post_totals = show_ospf_neighbor_totals(post_counters)
 					pre_counters.update(pre_totals)
 					post_counters.update(post_totals)
+					ospf_post_active = post_counters
 					ext_text = '\nOSPF Neighbor Summary:'
 					result = create_result('show ospf neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show ospf standby neighbor':
+					pre_counters = show_ospf_neighbor_compare(pre_list)
+					post_counters = show_ospf_neighbor_compare(post_list)
+					pre_totals = show_ospf_neighbor_totals(pre_counters)
+					post_totals = show_ospf_neighbor_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nOSPF Standby Neighbor Summary:'
+					result = create_result('show ospf standby neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+					ext_text = '\nOSPF Active / Standby Sync Summary:'
+					result = create_result('OSPF Active / Standby Comparison: Post Results', ext_text, ospf_post_active, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'show ospf vrf all neighbor':
 					pre_counters = show_ospf_neighbor_compare(pre_list)
@@ -376,8 +487,22 @@ def task():
 					post_totals = show_ospf_neighbor_totals(post_counters)
 					pre_counters.update(pre_totals)
 					post_counters.update(post_totals)
+					ospf_vrf_all_post_active = post_counters
 					ext_text = '\nOSPF VRF All Neighbor Summary:'
 					result = create_result('show ospf vrf all neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show ospf vrf all standby neighbor':
+					pre_counters = show_ospf_neighbor_compare(pre_list)
+					post_counters = show_ospf_neighbor_compare(post_list)
+					pre_totals = show_ospf_neighbor_totals(pre_counters)
+					post_totals = show_ospf_neighbor_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nOSPF VRF All Standby Neighbor Summary:'
+					result = create_result('show ospf vrf all standby neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+					ext_text = '\nOSPF VRF All Active / Standby Sync Summary:'
+					result = create_result('OSPF VRF All Active / Standby Comparison: Post Results', ext_text, ospf_vrf_all_post_active, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'show isis neighbor':
 					pre_counters = show_isis_neighbor_compare(pre_list)
@@ -399,15 +524,25 @@ def task():
 					ext_text = '\nMPLS LDP Neighbor Summary:'
 					result = create_result('show mpls ldp neighbor brief', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
-				elif command == 'show mpls traffic-eng tunnels':
-					pre_counters = show_mpls_traffic_eng_tunnels_compare(pre_list, platform)
-					post_counters = show_mpls_traffic_eng_tunnels_compare(post_list, platform)
-					pre_totals = show_mpls_traffic_eng_tunnels_totals(pre_counters)
-					post_totals = show_mpls_traffic_eng_tunnels_totals(post_counters)
+				elif command == 'show mpls traffic-eng tunnels p2p':
+					pre_counters = show_mpls_traffic_eng_tunnels_p2p_compare(pre_list)
+					post_counters = show_mpls_traffic_eng_tunnels_p2p_compare(post_list)
+					pre_totals = show_mpls_traffic_eng_tunnels_p2p_totals(pre_counters)
+					post_totals = show_mpls_traffic_eng_tunnels_p2p_totals(post_counters)
 					pre_counters.update(pre_totals)
 					post_counters.update(post_totals)
-					ext_text = '\nMPLS Traffic Engineering Summary:'
-					result = create_result('show mpls traffic-eng tunnels', ext_text, pre_counters, pre_totals, post_counters)
+					ext_text = '\nMPLS Traffic Engineering P2P Summary:'
+					result = create_result('show mpls traffic-eng tunnels p2p', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show mpls traffic-eng tunnels p2mp':
+					pre_counters = show_mpls_traffic_eng_tunnels_p2mp_compare(pre_list)
+					post_counters = show_mpls_traffic_eng_tunnels_p2mp_compare(post_list)
+					pre_totals = show_mpls_traffic_eng_tunnels_p2mp_totals(pre_counters)
+					post_totals = show_mpls_traffic_eng_tunnels_p2mp_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nMPLS Traffic Engineering P2MP Summary:'
+					result = create_result('show mpls traffic-eng tunnels p2mp', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'show bfd session':
 					pre_counters = show_bfd_session_compare(pre_list)
@@ -420,14 +555,35 @@ def task():
 					result = create_result('show bfd session', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'admin show controller fabric plane all detail':
-					pre_counters = admin_show_controller_fabric_plane_all_detail_compare(pre_list)
-					post_counters = admin_show_controller_fabric_plane_all_detail_compare(post_list)
-					pre_totals = admin_show_controller_fabric_plane_all_detail_totals(pre_counters)
-					post_totals = admin_show_controller_fabric_plane_all_detail_totals(post_counters)
+					if platform == 'crs':
+						pre_counters = crs_admin_show_controller_fabric_plane_all_detail_compare(pre_list)
+						post_counters = crs_admin_show_controller_fabric_plane_all_detail_compare(post_list)
+						pre_totals = crs_admin_show_controller_fabric_plane_all_detail_totals(pre_counters)
+						post_totals = crs_admin_show_controller_fabric_plane_all_detail_totals(post_counters)
+						pre_counters.update(pre_totals)
+						post_counters.update(post_totals)
+						ext_text = '\nCRS Fabric Summary:'
+						result = create_result('admin show controller fabric plane all detail', ext_text, pre_counters, pre_totals, post_counters)
+						response = print_results(result, pre_counters, post_counters, outfile)
+					elif platform == 'ncs6000':
+						pre_counters = ncs6k_admin_show_controller_fabric_plane_all_detail_compare(pre_list)
+						post_counters = ncs6k_admin_show_controller_fabric_plane_all_detail_compare(post_list)
+						pre_totals = ncs6k_admin_show_controller_fabric_plane_all_detail_totals(pre_counters)
+						post_totals = ncs6k_admin_show_controller_fabric_plane_all_detail_totals(post_counters)
+						pre_counters.update(pre_totals)
+						post_counters.update(post_totals)
+						ext_text = '\nNCS6K Fabric Summary:'
+						result = create_result('admin show controller fabric plane all detail', ext_text, pre_counters, pre_totals, post_counters)
+						response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'admin show controller fabric link health':
+					pre_counters = admin_show_controller_fabric_link_health_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_health_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_health_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_health_totals(post_counters)
 					pre_counters.update(pre_totals)
 					post_counters.update(post_totals)
-					ext_text = '\nCRS Fabric Summary:'
-					result = create_result('admin show controller fabric plane all detail', ext_text, pre_counters, pre_totals, post_counters)
+					ext_text = '\nCRS Fabric Link Summary:'
+					result = create_result('admin show controller fabric link health', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'show pfm loc all':
 					pre_counters = show_pfm_loc_all_compare(pre_list)
@@ -458,6 +614,166 @@ def task():
 					post_counters.update(post_totals)
 					ext_text = '\nNPU Allocation Resource Summary:'
 					result = create_result('show controllers fia diagshell 0 "diag alloc all" location all', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s1 tx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S1 Tx Down Links:'
+					result = create_result('admin show controller fabric link port s1 tx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s1 tx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S1 Tx Mismatch Links:'
+					result = create_result('admin show controller fabric link port s1 tx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s1 rx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S1 Rx Down Links:'
+					result = create_result('admin show controller fabric link port s1 rx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s1 rx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S1 Rx Mismatch Links:'
+					result = create_result('admin show controller fabric link port s1 rx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port fia tx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric FIA Tx Down Links:'
+					result = create_result('admin show controller fabric link port fia tx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port fia tx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric FIA Tx Mismatch Links:'
+					result = create_result('admin show controller fabric link port fia tx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port fia rx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric FIA Rx Down Links:'
+					result = create_result('admin show controller fabric link port fia rx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port fia rx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric FIA Rx Mismatch Links:'
+					result = create_result('admin show controller fabric link port fia rx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s2 tx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S2 Tx Down Links:'
+					result = create_result('admin show controller fabric link port s2 tx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s2 tx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S2 Tx Mismatch Links:'
+					result = create_result('admin show controller fabric link port s2 tx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s2 rx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S2 Rx Down Links:'
+					result = create_result('admin show controller fabric link port s2 rx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s2 rx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S2 Rx Mismatch Links:'
+					result = create_result('admin show controller fabric link port s2 rx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s3 tx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S3 Tx Down Links:'
+					result = create_result('admin show controller fabric link port s3 tx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s3 tx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S3 Tx Mismatch Links:'
+					result = create_result('admin show controller fabric link port s3 tx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s3 rx state down':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S3 Rx Down Links:'
+					result = create_result('admin show controller fabric link port s3 rx state down', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)	
+				elif command == 'admin show controller fabric link port s3 rx state mismatch':
+					pre_counters = admin_show_controller_fabric_link_port_compare(pre_list)
+					post_counters = admin_show_controller_fabric_link_port_compare(post_list)
+					pre_totals = admin_show_controller_fabric_link_port_totals(pre_counters)
+					post_totals = admin_show_controller_fabric_link_port_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nFabric S3 Rx Mismatch Links:'
+					result = create_result('admin show controller fabric link port s3 rx state mismatch', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)	
 			except Exception as e:
 				print("Error during processing of " + str(command) + " " + str(e))
@@ -601,7 +917,7 @@ def print_results(result, pre_counters, post_counters, outfile):
 def show_platform_compare(file, platform):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show platform
 	#Each line being an item in a list
@@ -834,8 +1150,6 @@ def show_memory_summary_compare(file):
 				continue
 			elif '-------------' in line:
 				continue
-			elif found_node and "Physical Memory" in line:
-				sh_cmd[node]["Phy Memory"] = line_list[2]
 			elif found_node and "Application Memory" in line:
 				sh_cmd[node]["Appl Memory"] = line_list[4] + " " + line_list[5] + " " + line_list[6]
 			elif found_node and "Image" in line:
@@ -860,7 +1174,7 @@ def show_memory_summary_totals(sh_cmd_dict):
 	#Nothing of importance yet
     counters = {'Total Nodes': 0}
     for key in sh_cmd_dict:
-        counters['Total Nodes'] += 1
+		counters['Total Nodes'] += 1
     return counters
 def show_filesystem_compare(file):
 	###__author__     = "Sam Milstead"
@@ -1077,14 +1391,16 @@ def show_redundancy_totals(sh_cmd_dict):
 def show_bgp_all_all_summary_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show bgp all all summary
 	#Each line being an item in a list
 	#Determine if neighbor state or prefixes have changed
     sh_cmd = {}
     found_AF = False
-    regex_string = re.compile('\d+\.\d+\.\d+\.\d+')
+    neighbor_found = False
+    regex_string = re.compile('(([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+')
+    ipv6_regex_line2 = re.compile('^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
     for line in file:
 		if len(line) != 0:
 			line_list = re.split(r'\s{1,}', line)
@@ -1103,8 +1419,19 @@ def show_bgp_all_all_summary_compare(file):
 			continue
 		elif found_AF:
 			found = regex_string.search(line_list[0])
+			#sometimes ipv6 neighbors appear on two lines instead of 1
 			if found:
-				sh_cmd[AF][line_list[0]] = 'Prefix Received: ' + line_list[9]
+				neighbor_found = True
+				if len(line_list) == 10:
+					sh_cmd[AF][line_list[0]] = 'Prefix Received: ' + line_list[9]
+					neighbor_found = False
+				else:
+					neighbor = line_list[0]
+			elif neighbor_found == True:
+				found2 = ipv6_regex_line2.search(line)
+				if found2:
+					sh_cmd[AF][neighbor] = 'Prefix Received: ' + found2.group(1)
+				neighbor_found = False
     return sh_cmd
 def show_bgp_all_all_summary_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1114,11 +1441,117 @@ def show_bgp_all_all_summary_totals(sh_cmd_dict):
 	#Perform some magic on the pre and post lines of output for show bgp all all summary
 	#Each line being an item in a list
 	#Determine total AFs and routes
-    counters = {'Total AFs': 0, 'Total Routes': 0}
+    counters = {'Total AFs': 0, 'Total Neighbors': 0, 'Total Routes': 0}
     regex = re.compile('(\d+)')
     for key in sh_cmd_dict:
 		counters['Total AFs'] += 1
 		for value in sh_cmd_dict[key]:
+			counters['Total Neighbors'] += 1
+			mytotal = sh_cmd_dict[key][value]
+			match = regex.search(mytotal)
+			if match:
+				mynewtotal = match.group(0)
+				counters['Total Routes'] += int(mynewtotal)
+    return counters
+def show_bgp_vrf_all_ipv4_summary_compare(file):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for show bgp vrf all ipv4 <> summary
+	#Determine if neighbor state or prefixes have changed
+    sh_cmd = {}
+    found_VRF = False
+    regex_string = re.compile('\d+\.\d+\.\d+\.\d+')
+    vrf_regex = re.compile('VRF: (\S+)')
+    for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		match = vrf_regex.search(line)
+		if match:
+			found_VRF = True
+			VRF = match.group(1)
+			sh_cmd[VRF] = {}
+			continue
+		elif found_VRF:
+			found = regex_string.search(line_list[0])
+			if found:
+				sh_cmd[VRF][line_list[0]] = 'Prefix Received: ' + line_list[9]
+    return sh_cmd
+def show_bgp_vrf_all_ipv4_summary_totals(sh_cmd_dict):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for show bgp vrf all ipv4 <> summary
+	#Determine total VRFs and routes
+    counters = {'Total VRFs': 0, 'Total Neighbors': 0, 'Total Routes': 0}
+    regex = re.compile('(\d+)')
+    for key in sh_cmd_dict:
+		counters['Total VRFs'] += 1
+		for value in sh_cmd_dict[key]:
+			counters['Total Neighbors'] += 1
+			mytotal = sh_cmd_dict[key][value]
+			match = regex.search(mytotal)
+			if match:
+				mynewtotal = match.group(0)
+				counters['Total Routes'] += int(mynewtotal)
+    return counters
+def show_bgp_vrf_all_ipv6_summary_compare(file):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for show bgp vrf all ipv6 <> summary
+	#Determine if neighbor state or prefixes have changed
+    sh_cmd = {}
+    found_VRF = False
+    neighbor_found = False
+    regex_string = re.compile('(([a-f0-9:]+:+)+[a-f0-9]+)')
+    ipv6_regex_line2 = re.compile('^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
+    vrf_regex = re.compile('VRF: (\S+)')
+    for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		match = vrf_regex.search(line)
+		if match:
+			found_VRF = True
+			VRF = match.group(1)
+			sh_cmd[VRF] = {}
+			continue
+		elif found_VRF:
+			found = regex_string.search(line_list[0])
+			#sometimes ipv6 neighbors appear on two lines instead of 1
+			if found:
+				neighbor_found = True
+				if len(line_list) == 10:
+					sh_cmd[VRF][line_list[0]] = 'Prefix Received: ' + line_list[9]
+					neighbor_found = False
+				else:
+					neighbor = line_list[0]
+			elif neighbor_found == True:
+				found2 = ipv6_regex_line2.search(line)
+				if found2:
+					sh_cmd[VRF][neighbor] = 'Prefix Received: ' + found2.group(1)
+				neighbor_found = False
+    return sh_cmd
+def show_bgp_vrf_all_ipv6_summary_totals(sh_cmd_dict):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for show bgp vrf all ipv6 <> summary
+	#Determine total VRFs and routes
+    counters = {'Total VRFs': 0, 'Total Neighbors': 0, 'Total Routes': 0}
+    regex = re.compile('(\d+)')
+    for key in sh_cmd_dict:
+		counters['Total VRFs'] += 1
+		for value in sh_cmd_dict[key]:
+			counters['Total Neighbors'] += 1
 			mytotal = sh_cmd_dict[key][value]
 			match = regex.search(mytotal)
 			if match:
@@ -1162,7 +1595,7 @@ def show_l2vpn_xconnect_compare(file):
 def show_l2vpn_xconnect_totals(sh_cmd):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show l2vpn xconnect
 	#Each line being an item in a list
@@ -1238,32 +1671,25 @@ def show_l2vpn_bridge_compare(file):
 def show_l2vpn_bridge_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show l2vpn xconnect
 	#Each line being an item in a list
 	#Determine total circuits and states
-    counters = {'Total Circuits': 0, 'ACs in Up State': 0, 'PWs in Up State': 0, 'VNIs in Up State': 0, 'P2MP PWs in Up State': 0}
+    counters = {'Total Circuits': 0, 'ACs in Up State': 0, 'PWs in Up State': 0, 'VNIs in Up State': 0, 'PBBs in Up State': 0}
     for key in sh_cmd_dict:
 		for value in sh_cmd_dict[key]:
-			if value == 'Total':
-				counters['Total Circuits'] += int(sh_cmd_dict[key][value])
-		if key == 'ACs':        
-			for value in sh_cmd_dict[key]:
-				if value == 'Up':
-					counters['ACs in Up State'] +=  int(sh_cmd_dict[key][value])
-		elif key == 'PWs':
-			for value in sh_cmd_dict[key]:
-				if value == 'Up':
-					counters['PWs in Up State'] +=  int(sh_cmd_dict[key][value])
-		elif key == 'P2MP':
-			for value in sh_cmd_dict[key]:
-				if value == 'Up':
-					counters['P2MP PWs in Up State'] +=  int(sh_cmd_dict[key][value])       
-		elif key == 'VNIs':
-			for value in sh_cmd_dict[key]:
-				if value == 'Up':
-					counters['VNIs in Up State'] +=  int(sh_cmd_dict[key][value])
+			myvalue = sh_cmd_dict[key][value]
+			if 'Total' in value:
+				counters['Total Circuits'] += int(myvalue)
+			elif 'ACs Up' in value:  
+				counters['ACs in Up State'] +=  int(myvalue)
+			elif 'PWs Up' in value:  
+				counters['PWs in Up State'] +=  int(myvalue)
+			elif 'PBBs Up' in value:  
+				counters['PBBs in Up State'] +=  int(myvalue)
+			elif 'VNIs Up' in value:  
+				counters['VNIs in Up State'] +=  int(myvalue)
     return counters
 def show_nv_satellite_compare(file):
 	###__author__     = "Sam Milstead"
@@ -1346,13 +1772,13 @@ def show_nv_satellite_totals(sh_cmd):
 def show_ospf_neighbor_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show ospf neighbor
 	#Each line being an item in a list
 	#Determine if OSPF neighborship has changed
     sh_cmd = {}
-    regex_string = re.compile('\d+\.\d+\.\d+\.\d+')
+    regex_string = re.compile('^(\d+\.\d+\.\d+\.\d+)\s+\d+\s+(\S+)\s+-?\s+\S+\s+(\d+\.\d+\.\d+\.\d+)\s+(\S+)')
     found_ospf = False
     for line in file:
 		if len(line) != 0:
@@ -1370,13 +1796,12 @@ def show_ospf_neighbor_compare(file):
 				ospf = line_list[3]
 			sh_cmd['OSPF ' + ospf] = {}
 			continue
+		elif 'Total neighbor count' in line:
+			found_ospf = False
 		elif found_ospf:
-			found = regex_string.search(line_list[0])
+			found = regex_string.search(line)
 			if found:
-				if len(line_list) == 6:
-					sh_cmd['OSPF ' + ospf]['Neighbor ' + line_list[0] + ' ' + line_list[5] + " In State: "] = line_list[2]
-				elif len(line_list) == 7:
-					sh_cmd['OSPF ' + ospf]['Neighbor ' + line_list[0] + ' ' + line_list[6] + " In State: "] = line_list[2]
+				sh_cmd['OSPF ' + ospf]['Neighbor ' + found.group(1) + ' ' + found.group(4) + " In State: "] = found.group(2)
     return sh_cmd
 def show_ospf_neighbor_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1526,12 +1951,80 @@ def show_mpls_ldp_neighbor_brief_totals(sh_cmd_dict):
 		except Exception as e:
 			pass
     return counters
-def show_mpls_traffic_eng_tunnels_compare(file, platform):
+def show_mpls_traffic_eng_tunnels_p2p_compare(file):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
-	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels
+	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2p
+	#Each line being an item in a list
+	#Determine tunnel state
+    sh_cmd = {}
+    regex_string = re.compile('Signalled-Name:\s(\S+)')
+    regex_string2 = re.compile('Admin:\s(\S+)\s+Oper:\s(\S+)')
+    regex_string3 = re.compile('Destination:\s(\S+)')
+    found_tunnel = False
+    for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		match = regex_string.search(line)
+		if match:
+			found_tunnel = True
+			tunnel = str(match.group(1))
+			sh_cmd['Tunnel ' + tunnel] = {}
+			continue
+		elif found_tunnel:
+			found = regex_string2.search(line)
+			if found:
+				sh_cmd['Tunnel ' + tunnel]['Admin State'] = str(found.group(1))
+				sh_cmd['Tunnel ' + tunnel]['Oper State'] = str(found.group(2))
+			if destination_stripped not in sh_cmd['Tunnel ' + tunnel].keys():
+				sh_cmd['Tunnel ' + tunnel]['Destination'] = destination_stripped
+		destination = regex_string3.search(line)
+		if destination:
+			destination_stripped = str(destination.group(1))
+    return sh_cmd
+def show_mpls_traffic_eng_tunnels_p2p_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2p
+	#Each line being an item in a list
+	#Determine how many tunnels there are
+    counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0,'Total Up Destinations': 0, 'Total Any Other State Destinations':0}
+    regex_string = re.compile('Destination\s\S+')
+    regex_admin = re.compile('Admin State')
+    regex_oper = re.compile('Oper State')
+    for key in sh_cmd_dict:
+		counters['Total Tunnels'] += 1
+		for entry in sh_cmd_dict[key].items():
+			match = regex_admin.search(str(entry))
+			if match:
+				if 'up' in entry:
+					counters['Total Admin Up Tunnels'] += 1
+				continue
+			match = regex_oper.search(str(entry))
+			if match:
+				if 'up' in entry:
+					counters['Total Oper Up Tunnels'] += 1
+				continue
+			match = regex_string.search(str(entry))
+			if match:
+				counters['Total Destinations'] += 1
+				if 'Up' in entry:
+					counters['Total Up Destinations'] += 1
+				else:
+					counters['Total Any Other State Destinations'] += 1
+    return counters
+def show_mpls_traffic_eng_tunnels_p2mp_compare(file):
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2mp
 	#Each line being an item in a list
 	#Determine tunnel state
     sh_cmd = {}
@@ -1540,87 +2033,61 @@ def show_mpls_traffic_eng_tunnels_compare(file, platform):
     regex_string3 = re.compile('Destination:\s(\S+)')
     regex_string4 = re.compile('State:\s(\S+)')
     found_tunnel = False
-    if platform == 'asr9k':
-		for line in file:
-			if len(line) != 0:
-				line_list = re.split(r'\s{1,}', line)
-			else:
-				continue
-			match = regex_string.search(line)
-			if match:
-				found_tunnel = True
-				tunnel = str(match.group(1))
-				sh_cmd['Tunnel ' + tunnel] = {}
-				continue
-			elif found_tunnel:
-				found = regex_string2.search(line)
-				if found:
-					sh_cmd['Tunnel ' + tunnel]['Admin State'] = str(found.group(1))
-					sh_cmd['Tunnel ' + tunnel]['Oper State'] = str(found.group(2))
-				destination = regex_string3.search(line)
-				if destination:
-					destination_stripped = str(destination.group(1))
-					sh_cmd['Tunnel ' + tunnel]['Destination ' + destination_stripped] = ''
-				state = regex_string4.search(line)
-				if state:
-					sh_cmd['Tunnel ' + tunnel][destination_stripped] = str(state.group(1))
-    elif platform == 'crs':
-		for line in file:
-			if len(line) != 0:
-				line_list = re.split(r'\s{1,}', line)
-			else:
-				continue
-			match = regex_string.search(line)
-			if match:
-				found_tunnel = True
-				tunnel = str(match.group(1))
-				sh_cmd['Tunnel ' + tunnel] = {}
-				continue
-			elif found_tunnel:
-				found = regex_string2.search(line)
-				if found:
-					sh_cmd['Tunnel ' + tunnel]['Admin State'] = str(found.group(1))
-					sh_cmd['Tunnel ' + tunnel]['Oper State'] = str(found.group(2))
-				if destination_stripped not in sh_cmd['Tunnel ' + tunnel].keys():
-					sh_cmd['Tunnel ' + tunnel]['Destination ' + destination_stripped] = ''
-				state = regex_string4.search(line)
-				if state:
-					sh_cmd['Tunnel ' + tunnel][destination_stripped] = str(state.group(1))
+    for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		match = regex_string.search(line)
+		if match:
+			found_tunnel = True
+			tunnel = str(match.group(1))
+			sh_cmd['Tunnel ' + tunnel] = {}
+			continue
+		elif found_tunnel:
+			found = regex_string2.search(line)
+			if found:
+				sh_cmd['Tunnel ' + tunnel]['Admin State'] = str(found.group(1))
+				sh_cmd['Tunnel ' + tunnel]['Oper State'] = str(found.group(2))
 			destination = regex_string3.search(line)
 			if destination:
 				destination_stripped = str(destination.group(1))
+			state = regex_string4.search(line)
+			if state:
+				sh_cmd['Tunnel ' + tunnel]['Destination ' + destination_stripped] = str(state.group(1))
     return sh_cmd
-def show_mpls_traffic_eng_tunnels_totals(sh_cmd_dict):
+def show_mpls_traffic_eng_tunnels_p2mp_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
-	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels
+	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2mp
 	#Each line being an item in a list
 	#Determine how many tunnels there are
     counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0,'Total Up Destinations': 0, 'Total Any Other State Destinations':0}
     regex_string = re.compile('Destination\s\S+')
+    regex_admin = re.compile('Admin State')
+    regex_oper = re.compile('Oper State')
     for key in sh_cmd_dict:
 		counters['Total Tunnels'] += 1
 		for entry in sh_cmd_dict[key].items():
-			if entry == 'Admin State':
-				if sh_cmd_dict[key][entry] == 'up':
+			match = regex_admin.search(str(entry))
+			if match:
+				if 'up' in entry:
 					counters['Total Admin Up Tunnels'] += 1
 				continue
-			if entry == 'Oper State':
-				if sh_cmd_dict[key][entry] == 'up':
+			match = regex_oper.search(str(entry))
+			if match:
+				if 'up' in entry:
 					counters['Total Oper Up Tunnels'] += 1
 				continue
 			match = regex_string.search(str(entry))
 			if match:
 				counters['Total Destinations'] += 1
-				try:
-					if sh_cmd_dict[key][entry] == 'Up':
-						counters['Total Up Destinations'] += 1
-					else:
-						counters['Total Any Other State Destinations'] += 1
-				except Exception as e:
-					pass
+				if 'Up' in entry:
+					counters['Total Up Destinations'] += 1
+				else:
+					counters['Total Any Other State Destinations'] += 1
     return counters
 def show_bfd_session_compare(file):
     ###__author__     = "Sam Milstead"
@@ -1663,10 +2130,10 @@ def show_bfd_session_totals(sh_cmd_dict):
 ####################
 #CRS PD            #
 ####################
-def admin_show_controller_fabric_plane_all_detail_compare(file):
+def crs_admin_show_controller_fabric_plane_all_detail_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
 	#Each line being an item in a list
@@ -1698,10 +2165,10 @@ def admin_show_controller_fabric_plane_all_detail_compare(file):
 				sh_cmd[match.group(1)]['Total Bundles'] = match.group(7)
 				sh_cmd[match.group(1)]['Down Bundles'] = match.group(8)
     return sh_cmd
-def admin_show_controller_fabric_plane_all_detail_totals(sh_cmd_dict):
+def crs_admin_show_controller_fabric_plane_all_detail_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
 	#Each line being an item in a list
@@ -1719,6 +2186,50 @@ def admin_show_controller_fabric_plane_all_detail_totals(sh_cmd_dict):
         if sh_cmd_dict[key]['Down Bundles']:
             value = sh_cmd_dict[key]['Down Bundles']
             counters['Total Bundles Down'] += int(value)
+    return counters	
+def admin_show_controller_fabric_link_health_compare(file):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for admin show controller fabric link health
+	#Determine link status
+    sh_cmd = {}
+    regex = re.compile('(\S+)\s+(\S+)\s+(\S+)\s+\S+\s+(\d)\s+(\S+)')
+    found_group = False
+    found_group2 = False
+    for line in file:
+        #logger.debug("show int line is: " + line)
+        if "Mismatched Link detail" in line:
+            found_group2 = True
+            continue
+        if found_group2:
+			if '---------------------------------------------------------------------------' in line:
+				found_group = True
+				continue
+        if found_group:
+            match = regex.search(line)
+            if match:
+				if match.group(4) not in sh_cmd.keys():
+					sh_cmd[match.group(4)] = {}
+				sh_cmd[match.group(4)]['Sfe Port ' + match.group(1) + ' remote ' + match.group(5) + ' In State: '] = match.group(2) + ' ' + match.group(3)
+    return sh_cmd	
+def admin_show_controller_fabric_link_health_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for admin show controller fabric plane link health
+	#Determine how many planes are affected, how many links are down, and how many are hard down
+    counters = {'Total Planes With Down Links': 0, 'Total Links Down': 0, 'Total Links Oper DN/DN': 0}
+    regex_string = re.compile('UP\/UP DN\/DN')
+    for key in sh_cmd_dict:
+        counters['Total Planes With Down Links'] += 1
+        for entry in sh_cmd_dict[key].items():
+			counters['Total Links Down'] +=1
+			match = regex_string.search(str(entry))
+			if match:
+				counters['Total Links Oper DN/DN'] +=1
     return counters
 ####################
 #ASR9K PD          #
@@ -1787,7 +2298,7 @@ def show_pfm_loc_all_totals(sh_cmd_dict):
 def show_controllers_npu_resources_all_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show controllers npu resources all loc all
 	#Each line being an item in a list
@@ -1849,7 +2360,6 @@ def show_controllers_npu_resources_all_totals(sh_cmd_dict):
     regex_string5 = re.compile('fec')
     for key in sh_cmd_dict:
 		for entry in sh_cmd_dict[key].items():
-			print(str(entry))
 			match = regex_string.search(str(entry))
 			if match:
 				if 'Green' in str(entry):
@@ -1934,6 +2444,92 @@ def show_controllers_fia_diag_alloc_all_totals(sh_cmd_dict):
 	#Determine NPU OOR Status
     counters = {}
     return counters	
+####################
+#NCS6K PD          #
+####################
+def ncs6k_admin_show_controller_fabric_plane_all_detail_compare(file):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
+	#Each line being an item in a list
+	#Determine plane state
+    sh_cmd = {}
+    regex = re.compile('(\d)\s+(\S+)\s+(\S+)\s+\S+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
+    found_group = False
+    for line in file:
+        #logger.debug("show int line is: " + line)
+        if len(line) != 0:
+            line_list = re.split(r'\s{1,}', line)
+        else:
+            continue
+        if "-----------------" in line:
+            found_group = True
+            continue
+        elif found_group:
+            match = regex.search(line)
+            if match:
+				sh_cmd[match.group(1)] = {}
+				sh_cmd[match.group(1)]['Admin/Plane State'] = match.group(2) + ' ' + match.group(3)
+				sh_cmd[match.group(1)]['Total Bundles'] = match.group(6)
+				sh_cmd[match.group(1)]['Down Bundles'] = match.group(7)
+    return sh_cmd
+def ncs6k_admin_show_controller_fabric_plane_all_detail_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
+	#Each line being an item in a list
+	#Determine Oper State and Bundle States
+    counters = {'Total Planes': 0, 'Total Planes in UP UP State': 0, 'Total Planes in Any Other State': 0, 'Total Bundles': 0, 'Total Bundles Down': 0}
+    for key in sh_cmd_dict:
+        counters['Total Planes'] += 1
+        if sh_cmd_dict[key]['Admin/Plane State'] == 'UP UP':
+            counters['Total Planes in UP UP State'] += 1
+        else:
+            counters['Total Planes in Any Other State'] += 1
+        if sh_cmd_dict[key]['Total Bundles']:
+            value = sh_cmd_dict[key]['Total Bundles']
+            counters['Total Bundles'] += int(value)
+        if sh_cmd_dict[key]['Down Bundles']:
+            value = sh_cmd_dict[key]['Down Bundles']
+            counters['Total Bundles Down'] += int(value)
+    return counters	
+def admin_show_controller_fabric_link_port_compare(file):
+	###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for admin show controller fabric link port <>
+	#Determine how many links are down or mismatched
+    sh_cmd = {}
+    found_links = False
+    regex_string = re.compile('^\S+')
+    for line in file:
+		if '------------------' in line:
+			found_links = True
+			sh_cmd[link] = {}
+		elif found_links == True:
+			match = regex_string.search(line)
+			if match:
+				sh_cmd[link][str(match.group(1))] = str(match.group(2))
+    return sh_cmd
+def admin_show_controller_fabric_link_port_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
+	###__version__    = "1.1.0"
+	###__status__     = "alpha"
+	#Perform some magic on the pre and post lines of output for admin show controller fabric link port <>
+	#Determine how many links are not good
+    counters = {'Total Links Not Good': 0}
+    for key in sh_cmd_dict:
+        counters['Total Links Not Good'] += 1
+    return counters
+
+
+
 ####################
 #call main task    #
 ####################

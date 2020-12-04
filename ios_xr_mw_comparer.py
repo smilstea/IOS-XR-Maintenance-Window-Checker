@@ -1,11 +1,10 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "1.1.1"
+__version__    = "1.1.0"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
-
 import os
 import sys
 import re
@@ -13,7 +12,7 @@ import re
 def task():
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform all the parsing and then pass values to other functions
 	#for making sense of the data and comparison tests
@@ -80,8 +79,8 @@ def task():
 					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show bgp vrf all ipv4 unicast summary',
 					'show bgp vrf all ipv4 flowspec summary', 'show bgp vrf all ipv4 labeled-unicast summary', 'show bgp vrf all ipv4 multicast summary', 'show bgp vrf all ipv4 mvpn summary',
 					'show bgp vrf all ipv6 unicast summary', 'show bgp vrf all ipv6 flowspec summary', 'show bgp vrf all ipv6 multicast summary', 'show bgp vrf all ipv6 mvpn summary',
-					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show ospfv3 neighbor', 'show ospfv3 vrf all neighbor',
-					'show isis neighbor', 'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
+					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show isis neighbor',
+					'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
 		crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
 		asr9k_commands = ['show pfm loc all']
 		ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
@@ -468,6 +467,19 @@ def task():
 					ext_text = '\nOSPF Neighbor Summary:'
 					result = create_result('show ospf neighbor', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
+				elif command == 'show ospf standby neighbor':
+					pre_counters = show_ospf_neighbor_compare(pre_list)
+					post_counters = show_ospf_neighbor_compare(post_list)
+					pre_totals = show_ospf_neighbor_totals(pre_counters)
+					post_totals = show_ospf_neighbor_totals(post_counters)
+					pre_counters.update(pre_totals)
+					post_counters.update(post_totals)
+					ext_text = '\nOSPF Standby Neighbor Summary:'
+					result = create_result('show ospf standby neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
+					ext_text = '\nOSPF Active / Standby Sync Summary:'
+					result = create_result('OSPF Active / Standby Comparison: Post Results', ext_text, ospf_post_active, pre_totals, post_counters)
+					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'show ospf vrf all neighbor':
 					pre_counters = show_ospf_neighbor_compare(pre_list)
 					post_counters = show_ospf_neighbor_compare(post_list)
@@ -479,27 +491,18 @@ def task():
 					ext_text = '\nOSPF VRF All Neighbor Summary:'
 					result = create_result('show ospf vrf all neighbor', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
-				elif command == 'show ospfv3 neighbor':
+				elif command == 'show ospf vrf all standby neighbor':
 					pre_counters = show_ospf_neighbor_compare(pre_list)
 					post_counters = show_ospf_neighbor_compare(post_list)
 					pre_totals = show_ospf_neighbor_totals(pre_counters)
 					post_totals = show_ospf_neighbor_totals(post_counters)
 					pre_counters.update(pre_totals)
 					post_counters.update(post_totals)
-					ospf_post_active = post_counters
-					ext_text = '\nOSPFv3 Neighbor Summary:'
-					result = create_result('show ospfv3 neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					ext_text = '\nOSPF VRF All Standby Neighbor Summary:'
+					result = create_result('show ospf vrf all standby neighbor', ext_text, pre_counters, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
-				elif command == 'show ospfv3 vrf all neighbor':
-					pre_counters = show_ospf_neighbor_compare(pre_list)
-					post_counters = show_ospf_neighbor_compare(post_list)
-					pre_totals = show_ospf_neighbor_totals(pre_counters)
-					post_totals = show_ospf_neighbor_totals(post_counters)
-					pre_counters.update(pre_totals)
-					post_counters.update(post_totals)
-					ospf_vrf_all_post_active = post_counters
-					ext_text = '\nOSPFv3 VRF All Neighbor Summary:'
-					result = create_result('show ospfv3 vrf all neighbor', ext_text, pre_counters, pre_totals, post_counters)
+					ext_text = '\nOSPF VRF All Active / Standby Sync Summary:'
+					result = create_result('OSPF VRF All Active / Standby Comparison: Post Results', ext_text, ospf_vrf_all_post_active, pre_totals, post_counters)
 					response = print_results(result, pre_counters, post_counters, outfile)
 				elif command == 'show isis neighbor':
 					pre_counters = show_isis_neighbor_compare(pre_list)
@@ -914,34 +917,47 @@ def print_results(result, pre_counters, post_counters, outfile):
 def show_platform_compare(file, platform):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show platform
 	#Each line being an item in a list
 	#Determine Card state and return the pre and post results
     sh_plat = {}
-    regex_string = re.compile('(\S+)\s+(\S+\s+\S+(\s\S+)?)\s+(\S+(\s\S+\s\S+)?)\s+(\S+)')
-    regex_string2 = re.compile('(\S+)\s+(\S+)\s+(\S+(\s\S+\s\S+)?)\s+(\S+)')
     found_start = False
     for line in file:
 		if '---------------' in line:
 			found_start = True
 			continue
-		if found_start == True:
-			if platform == 'crs':
-				match = regex_string.search(line)
-				if match:
-					sh_plat[match.group(1)] = {}
-					sh_plat[match.group(1)]['type'] = match.group(2)
-					sh_plat[match.group(1)]['State'] = match.group(4)
-					sh_plat[match.group(1)]['config state'] = match.group(6)
-			else:
-				match = regex_string2.search(line)
-				if match:
-					sh_plat[match.group(1)] = {}
-					sh_plat[match.group(1)]['type'] = match.group(2)
-					sh_plat[match.group(1)]['State'] = match.group(3)
-					sh_plat[match.group(1)]['config state'] = match.group(5)
+		try:
+			if found_start == True:
+				line_list = re.split(r'\s{2,}', line)
+				if len(line_list) >= 4:
+					if platform == 'crs':
+						sh_plat[line_list[0]] = {}
+						sh_plat[line_list[0]]['type'] = line_list[1] + ' ' + line_list[2]
+						sh_plat[line_list[0]]['State'] = line_list[3]
+						sh_plat[line_list[0]]['config state'] = line_list[4]
+					if platform == 'asr9k':
+						sh_plat[line_list[0]] = {}
+						sh_plat[line_list[0]]['type'] = line_list[1]
+						sh_plat[line_list[0]]['State'] = line_list[2]
+						sh_plat[line_list[0]]['config state'] = line_list[3]
+					if platform == 'ncs5500':
+						sh_plat[line_list[0]] = {}
+						sh_plat[line_list[0]]['type'] = line_list[1]
+						sh_plat[line_list[0]]['State'] = line_list[2]
+						sh_plat[line_list[0]]['config state'] = line_list[3]
+				elif len(line_list) == 3:
+					if platform == 'ncs5500':
+						sh_plat[line_list[0]] = {}
+						sh_plat[line_list[0]]['type'] = line_list[1]
+						sh_plat[line_list[0]]['State'] = line_list[2]
+					elif platform == 'asr9k':
+						sh_plat[line_list[0]] = {}
+						sh_plat[line_list[0]]['type'] = line_list[1]
+						sh_plat[line_list[0]]['State'] = line_list[2]
+		except Exception as e:
+			print("error " + str(e))
     return sh_plat
 def show_platform_totals(sh_plat):
     ###__author__     = "Sam Milstead"
@@ -1016,24 +1032,30 @@ def show_install_totals(sh_cmd_dict):
 def show_interface_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show interface description
 	#Each line being an item in a list
 	#Determine if status for an interface has changed
     found_start = False
-    regex_string = re.compile('(\S+)\s+(\S+)\s+(\S+)(\s+(\S+))?')
     sh_int = {}
     for line in file:
-		match = regex_string.search(line)
-		if match:
-			sh_int[match.group(1)] = {}
-			sh_int[match.group(1)]['status'] = match.group(2)
-			sh_int[match.group(1)]['protocol'] = match.group(3)
-			try:
-				sh_int[match.group(1)]['desc'] = match.group(5)
-			except Exception as e:
-				sh_int[match.group(1)]['desc'] = ' '
+		try:
+			if '---------------' in line:
+				found_start = True
+				continue
+			if found_start:
+				line_list = line.split()
+				if len(line_list) >= 3:
+					sh_int[line_list[0]] = {}
+					sh_int[line_list[0]]['status'] = line_list[1]
+					sh_int[line_list[0]]['protocol'] = line_list[2]
+					try:
+						sh_int[line_list[0]]['desc'] = ' '.join(line_list[3:])
+					except Exception as e:
+						sh_int[line_list[0]]['desc'] = ' '
+		except Exception as e:
+			pass
 	#We get an error message for null keys so we need to handle those
 	#"dictionary changed size during iteration"
     for key in list(sh_int):
@@ -1064,19 +1086,25 @@ def show_interface_totals(sh_int):
 def show_ipv6_interface_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show ipv6 interface brief
 	#Each line being an item in a list
 	#Determine if interface status has changed
+    found_start = True
     sh_int = {}
-    regex_match = re.compile('^(\S+)\s+\[(\S+)\/(\S+)\]')
+    regex_match = re.compile('^(\S+)\s+\[(\S+)/(\S+)\]')
     for line in file:
-		match = regex_match.search(line)
-		if match:
-			sh_int[match.group(1)] = {}
-			sh_int[match.group(1)]['status'] = match.group(2)
-			sh_int[match.group(1)]['protocol'] = match.group(3)
+		try:
+			if found_start:
+				line_list = line.split()
+				if len(line_list) >= 2:
+					match = regex_match.search(line)
+					sh_int[match.group(1)] = {}
+					sh_int[match.group(1)]['status'] = match.group(2)
+					sh_int[match.group(1)]['protocol'] = match.group(3)
+		except Exception as e:
+			pass
     return sh_int
 def show_ipv6_interface_totals(sh_int):
 	###__author__     = "Sam Milstead"
@@ -1363,7 +1391,7 @@ def show_redundancy_totals(sh_cmd_dict):
 def show_bgp_all_all_summary_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show bgp all all summary
 	#Each line being an item in a list
@@ -1371,34 +1399,38 @@ def show_bgp_all_all_summary_compare(file):
     sh_cmd = {}
     found_AF = False
     neighbor_found = False
-    AF_regex = re.compile('Address Family:\s(\S+\s\S+)')
-    regex_string = re.compile('^((([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+)')
-    regex_string2 = re.compile('^((([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
+    regex_string = re.compile('(([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+')
     ipv6_regex_line2 = re.compile('^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
     for line in file:
-		match = AF_regex.search(line)
-		if match:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		if 'Address Family:' in line:
 			found_AF = True
-			AF = match.group(1)
+			AF = line_list[0] + ' ' + line_list[1]
+			if line_list[2]:
+				AF += (' ' + line_list[2])
+			if line_list[3]:
+				AF += (' ' + line_list[3])
 			sh_cmd[AF] = {}
 			continue
 		elif '-------------' in line:
 			continue
 		elif found_AF:
-			found = regex_string.search(line)
+			found = regex_string.search(line_list[0])
 			#sometimes ipv6 neighbors appear on two lines instead of 1
 			if found:
 				neighbor_found = True
-				found2 = regex_string2.search(line)
-				if found2:
-					sh_cmd[AF][found2.group(1)] = 'Prefix Received: ' + found2.group(4)
+				if len(line_list) == 10:
+					sh_cmd[AF][line_list[0]] = 'Prefix Received: ' + line_list[9]
 					neighbor_found = False
 				else:
-					neighbor = found.group(1)
+					neighbor = line_list[0]
 			elif neighbor_found == True:
-				found3 = ipv6_regex_line2.search(line)
-				if found3:
-					sh_cmd[AF][neighbor] = 'Prefix Received: ' + found3.group(1)
+				found2 = ipv6_regex_line2.search(line)
+				if found2:
+					sh_cmd[AF][neighbor] = 'Prefix Received: ' + found2.group(1)
 				neighbor_found = False
     return sh_cmd
 def show_bgp_all_all_summary_totals(sh_cmd_dict):
@@ -1662,22 +1694,26 @@ def show_l2vpn_bridge_totals(sh_cmd_dict):
 def show_nv_satellite_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show nv satellite status
 	#Each line being an item in a list
 	#Determine if satellite status, icl, etc has changed
     sh_cmd = {}
-    regex_string = re.compile('Satellite (\d+)')
+    regex_string = re.compile('Satellite \d+')
     icl_string = re.compile('\S+')
     found_satellite = False
     found_icl = False
     for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
 		match = regex_string.search(line)
 		if match:
 			found_satellite = True
 			found_icl = False
-			satellite = match.group(1)
+			satellite = line_list[1]
 			sh_cmd[satellite] = {}
 			continue
 		elif '-------------' in line:
@@ -1736,28 +1772,36 @@ def show_nv_satellite_totals(sh_cmd):
 def show_ospf_neighbor_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show ospf neighbor
 	#Each line being an item in a list
 	#Determine if OSPF neighborship has changed
     sh_cmd = {}
-    neighbor_regex = re.compile('Neighbors for (OSPF.*)')
-    regex_string = re.compile('(\d+\.\d+\.\d+\.\d+)\s+\d+\s+(\S+)\s+-?\s+\S+\s+((\d+\.\d+\.\d+\.\d+)|(\d+))\s+(\S+)')
+    regex_string = re.compile('^(\d+\.\d+\.\d+\.\d+)\s+\d+\s+(\S+)\s+-?\s+\S+\s+(\d+\.\d+\.\d+\.\d+)\s+(\S+)')
     found_ospf = False
     for line in file:
-		match = neighbor_regex.search(line)
-		if match:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		if 'Neighbors' in line:
 			found_ospf = True
-			ospf = match.group(1)
-			sh_cmd[ospf] = {}
+			if len(line_list) == 6:
+				ospf = line_list[3] + ' '
+				temp = line_list[4]
+				temp = temp[:-1:]
+				ospf = ospf + temp + ' ' + line_list[5]
+			else:
+				ospf = line_list[3]
+			sh_cmd['OSPF ' + ospf] = {}
 			continue
 		elif 'Total neighbor count' in line:
 			found_ospf = False
 		elif found_ospf:
 			found = regex_string.search(line)
 			if found:
-				sh_cmd[ospf]['Neighbor ' + found.group(1) + ' ' + found.group(3) + ' ' + found.group(6) + " In State: "] = found.group(2)
+				sh_cmd['OSPF ' + ospf]['Neighbor ' + found.group(1) + ' ' + found.group(4) + " In State: "] = found.group(2)
     return sh_cmd
 def show_ospf_neighbor_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1783,26 +1827,32 @@ def show_ospf_neighbor_totals(sh_cmd_dict):
 def show_isis_neighbor_compare(file):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show isis neighbor
 	#Each line being an item in a list
 	#Determine isis neighbor details
     sh_cmd = {}
-    regex_string = re.compile('IS-IS (\S+) neighbors:')
-    regex_string2 = re.compile('(\S+)\s+(\S+\S+\d+)\s+(\S+)\s+(\S+)\s+\d+\s+\S+\s+\S+')
+    regex_string = re.compile('IS-IS \S+ neighbors:')
+    regex_string2 = re.compile('\S+\s+\S+\S+\d+\s+\S+\s+\S+\s+\d+\s+\S+\s+\S+')
     found_isis = False
     for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
 		match = regex_string.search(line)
 		if match:
 			found_isis = True
-			isis = match.group(1)
+			isis = line_list[1]
 			sh_cmd['ISIS ' + isis] = {}
+			continue
+		elif 'System Id' in line:
 			continue
 		elif found_isis:
 			found = regex_string2.search(line)
 			if found:
-				sh_cmd['ISIS ' + isis]['Neighbor ' + found.group(1) + ' ' + found.group(2) + " in State: "] = found.group(4)
+				sh_cmd['ISIS ' + isis]['Neighbor ' + line_list[0] + ' ' + line_list[1] + " in State: "] = line_list[3]
     return sh_cmd
 def show_isis_neighbor_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
@@ -1828,39 +1878,43 @@ def show_isis_neighbor_totals(sh_cmd_dict):
 def show_mpls_ldp_neighbor_brief_compare(file):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show mpls ldp neighbor brief
 	#Each line being an item in a list
 	#Determine neighborships, labels, etc
     sh_cmd = {}
     found_group = False
-    regex = re.compile('(((([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+):\d)\s+(\S)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
-    regex2 = re.compile('(((([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+):\d)\s+(\S)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\d+)')
+    regex = re.compile('\d+\.\d+\.\d+\.\d+\:\d+')
     for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
 		if "-----------------" in line:
 			found_group = True
 			continue
 		elif found_group:
-			match = regex.search(line)
-			match2 = regex2.search(line)
+			match = regex.search(line_list[0])
 			if match:
-				sh_cmd[match.group(1)] = {}
-				sh_cmd[match.group(1)]['GR'] = match.group(5)
-				sh_cmd[match.group(1)]['NSR'] = match.group(6)
-				sh_cmd[match.group(1)]['Discovery IPv4'] = match.group(8)
-				sh_cmd[match.group(1)]['Discovery IPv6'] = match.group(9)
-				sh_cmd[match.group(1)]['Addresses IPv4'] = match.group(10)
-				sh_cmd[match.group(1)]['Addresses IPv6'] = match.group(11)
-				sh_cmd[match.group(1)]['Labels IPv4'] = match.group(12)
-				sh_cmd[match.group(1)]['Labels IPv6'] = match.group(13)
-			elif match2:
-				sh_cmd[match2.group(1)] = {}
-				sh_cmd[match2.group(1)]['GR'] = match2.group(5)
-				sh_cmd[match2.group(1)]['NSR'] = match2.group(6)
-				sh_cmd[match2.group(1)]['Discovery'] = match2.group(8)
-				sh_cmd[match2.group(1)]['Addresses'] = match2.group(9)
-				sh_cmd[match2.group(1)]['Labels IPv4'] = match2.group(10)
+				#Len has to be 1 more than the actual number of fields, ASR9K has 10, CRS has 7
+				if len(line_list) == 11:
+					sh_cmd[line_list[0]] = {}
+					sh_cmd[line_list[0]]['GR'] = line_list[1]
+					sh_cmd[line_list[0]]['NSR'] = line_list[2]
+					sh_cmd[line_list[0]]['Discovery IPv4'] = line_list[4]
+					sh_cmd[line_list[0]]['Discovery IPv6'] = line_list[5]
+					sh_cmd[line_list[0]]['Addresses IPv4'] = line_list[6]
+					sh_cmd[line_list[0]]['Addresses IPv6'] = line_list[7]
+					sh_cmd[line_list[0]]['Labels IPv4'] = line_list[8]
+					sh_cmd[line_list[0]]['Labels IPv6'] = line_list[9]
+				elif len(line_list) == 8:
+					sh_cmd[line_list[0]] = {}
+					sh_cmd[line_list[0]]['GR'] = line_list[1]
+					sh_cmd[line_list[0]]['NSR'] = line_list[2]
+					sh_cmd[line_list[0]]['Discovery'] = line_list[4]
+					sh_cmd[line_list[0]]['Addresses'] = line_list[5]
+					sh_cmd[line_list[0]]['Labels IPv4'] = line_list[6]
     return sh_cmd
 def show_mpls_ldp_neighbor_brief_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
@@ -1911,6 +1965,10 @@ def show_mpls_traffic_eng_tunnels_p2p_compare(file):
     regex_string3 = re.compile('Destination:\s(\S+)')
     found_tunnel = False
     for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
 		match = regex_string.search(line)
 		if match:
 			found_tunnel = True
@@ -1931,28 +1989,40 @@ def show_mpls_traffic_eng_tunnels_p2p_compare(file):
 def show_mpls_traffic_eng_tunnels_p2p_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2p
 	#Each line being an item in a list
 	#Determine how many tunnels there are
-    counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0}
+    counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0,'Total Up Destinations': 0, 'Total Any Other State Destinations':0}
+    regex_string = re.compile('Destination\s\S+')
+    regex_admin = re.compile('Admin State')
+    regex_oper = re.compile('Oper State')
     for key in sh_cmd_dict:
 		counters['Total Tunnels'] += 1
-		for value in sh_cmd_dict[key]:
-			if value ==  'Admin State':
-				if sh_cmd_dict[key][value] == 'up':
+		for entry in sh_cmd_dict[key].items():
+			match = regex_admin.search(str(entry))
+			if match:
+				if 'up' in entry:
 					counters['Total Admin Up Tunnels'] += 1
-			elif value ==  'Oper State':
-				if sh_cmd_dict[key][value] == 'up':
+				continue
+			match = regex_oper.search(str(entry))
+			if match:
+				if 'up' in entry:
 					counters['Total Oper Up Tunnels'] += 1
-			elif value ==  'Destination':
+				continue
+			match = regex_string.search(str(entry))
+			if match:
 				counters['Total Destinations'] += 1
+				if 'Up' in entry:
+					counters['Total Up Destinations'] += 1
+				else:
+					counters['Total Any Other State Destinations'] += 1
     return counters
 def show_mpls_traffic_eng_tunnels_p2mp_compare(file):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2mp
 	#Each line being an item in a list
@@ -1964,6 +2034,10 @@ def show_mpls_traffic_eng_tunnels_p2mp_compare(file):
     regex_string4 = re.compile('State:\s(\S+)')
     found_tunnel = False
     for line in file:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
 		match = regex_string.search(line)
 		if match:
 			found_tunnel = True
@@ -1985,24 +2059,32 @@ def show_mpls_traffic_eng_tunnels_p2mp_compare(file):
 def show_mpls_traffic_eng_tunnels_p2mp_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2mp
 	#Each line being an item in a list
 	#Determine how many tunnels there are
     counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0,'Total Up Destinations': 0, 'Total Any Other State Destinations':0}
+    regex_string = re.compile('Destination\s\S+')
+    regex_admin = re.compile('Admin State')
+    regex_oper = re.compile('Oper State')
     for key in sh_cmd_dict:
 		counters['Total Tunnels'] += 1
-		for value in sh_cmd_dict[key]:
-			if value ==  'Admin State':
-				if sh_cmd_dict[key][value] == 'up':
+		for entry in sh_cmd_dict[key].items():
+			match = regex_admin.search(str(entry))
+			if match:
+				if 'up' in entry:
 					counters['Total Admin Up Tunnels'] += 1
-			elif value ==  'Oper State':
-				if sh_cmd_dict[key][value] == 'up':
+				continue
+			match = regex_oper.search(str(entry))
+			if match:
+				if 'up' in entry:
 					counters['Total Oper Up Tunnels'] += 1
-			elif 'Destination' in value:
+				continue
+			match = regex_string.search(str(entry))
+			if match:
 				counters['Total Destinations'] += 1
-				if sh_cmd_dict[key][value] == 'Up':
+				if 'Up' in entry:
 					counters['Total Up Destinations'] += 1
 				else:
 					counters['Total Any Other State Destinations'] += 1
@@ -2051,7 +2133,7 @@ def show_bfd_session_totals(sh_cmd_dict):
 def crs_admin_show_controller_fabric_plane_all_detail_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
 	#Each line being an item in a list
@@ -2061,6 +2143,11 @@ def crs_admin_show_controller_fabric_plane_all_detail_compare(file):
     regex2 = re.compile('(\d)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\d+)\s+(\d+)\s+')
     found_group = False
     for line in file:
+        #logger.debug("show int line is: " + line)
+        if len(line) != 0:
+            line_list = re.split(r'\s{1,}', line)
+        else:
+            continue
         if "-----------------" in line:
             found_group = True
             continue
@@ -2130,7 +2217,7 @@ def admin_show_controller_fabric_link_health_compare(file):
 def admin_show_controller_fabric_link_health_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for admin show controller fabric plane link health
 	#Determine how many planes are affected, how many links are down, and how many are hard down
@@ -2138,9 +2225,10 @@ def admin_show_controller_fabric_link_health_totals(sh_cmd_dict):
     regex_string = re.compile('UP\/UP DN\/DN')
     for key in sh_cmd_dict:
         counters['Total Planes With Down Links'] += 1
-        for value in sh_cmd_dict[key]:
+        for entry in sh_cmd_dict[key].items():
 			counters['Total Links Down'] +=1
-			if value ==  'UP/UP DN/DN':
+			match = regex_string.search(str(entry))
+			if match:
 				counters['Total Links Oper DN/DN'] +=1
     return counters
 ####################
@@ -2149,21 +2237,23 @@ def admin_show_controller_fabric_link_health_totals(sh_cmd_dict):
 def show_pfm_loc_all_compare(file):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show pfm loc all
 	#Each line being an item in a list
 	#Determine alarm state
     sh_cmd = {}
     found_node = False
-    regex_node = re.compile('node:\s(\S+)')
     regex_string = re.compile('(\w+\s)?(\w+\s+\d+\s+\d+\:\d+\:\d+)(\s\d+)?(\|--\||\|\d+\s?\|)(\S+)(\|)?.*\|(\S+).*\|\S+.*\|\S+.*\|(0x\S+)')
     regex2 = re.compile('(\w+\s)?(\w+\s+\d+\s+\d+\:\d+\:\d+)(\s\d+)?(\|--\||\|\d+\s?\|)(\S+)')
     for line in file:
-		match = regex_node.search(line)
-		if match:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		if 'node:' in line:
 			found_node = True
-			node = match.group(1)
+			node = line_list[1]
 			sh_cmd[node] = {}
 			continue
 		elif '-------------' in line:
@@ -2176,22 +2266,30 @@ def show_pfm_loc_all_compare(file):
 def show_pfm_loc_all_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show pfm loc all
 	#Each line being an item in a list
 	#Determine alarm state
     counters = {'Total Nodes': 0, 'Total Alarms': 0, 'Total Emergency/Alert alarms': 0, 'Total Critical Alarms': 0, 'Total Error Alarms': 0}
+    regex_string = re.compile('NO\'\)$')
+    regex_string2 = re.compile('E/A\'\)$')
+    regex_string3 = re.compile('CR\'\)$')
+    regex_string4 = re.compile('ER\'\)$')
     for key in sh_cmd_dict:
 		counters['Total Nodes'] += 1
-		for value in sh_cmd_dict[key]:
-			if "NO" not in sh_cmd_dict[key][value]:
+		for entry in sh_cmd_dict[key].items():
+			match = regex_string.search(str(entry))
+			if not match:
 				counters['Total Alarms'] += 1
-				if "E/A" in sh_cmd_dict[key][value]:
+				match2 = regex_string2.search(str(entry))
+				if match2:
 					counters['Total Emergency/Alert alarms'] += 1
-				if "CR" in sh_cmd_dict[key][value]:
+				match3 = regex_string3.search(str(entry))
+				if match3:
 					counters['Total Critical Alarms'] += 1
-				if "ER" in sh_cmd_dict[key][value]:
+				match4 = regex_string4.search(str(entry))
+				if match4:
 					counters['Total Error Alarms'] += 1 
     return counters
 ####################
@@ -2200,7 +2298,7 @@ def show_pfm_loc_all_totals(sh_cmd_dict):
 def show_controllers_npu_resources_all_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show controllers npu resources all loc all
 	#Each line being an item in a list
@@ -2210,106 +2308,125 @@ def show_controllers_npu_resources_all_compare(file):
     current_usage = False
     OOR_found = False
     total_found = False
-    regex_location = re.compile('HW Resource Information For Location: (\d\/\d+\/CPU0)')
-    regex_name = re.compile('Name\s+:\s(\S+)')
-    regex_npu = re.compile('NPU-(\d+)')
-    regex_oor_state = re.compile('OOR State\s+:\s(\S+)')
-    regex_total_inuse = re.compile('Total In-Use\s+:\s(\d+)')
     for line in file:
-		match = regex_location.search(line)
-		match2 = regex_name.search(line)
-		match3 = regex_npu.search(line)
-		match4 = regex_oor_state.search(line)
-		match5 = regex_total_inuse.search(line)
-		if match:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		if 'Location' in line:
 			found_location = True
-			location = match.group(1)
+			location = line_list[6]
 			sh_cmd[location] = {}
-		elif match2:
+		elif 'Name' in line:
 			if total_found == True:
 				sh_cmd[location][found_memory + ' ' + npu + ' Total In-Use'] = total
-			found_memory = match2.group(1)
+			found_memory = line_list[3]
 			current_usage = False
 			OOR_found = False
+			OOR_state = line_list[4]
 			total_found = False
-		elif match3 and current_usage == False:
+		elif 'NPU' in line and current_usage == False:
 			if OOR_found == True:
 				sh_cmd[location][found_memory + ' ' + npu + ' OOR State'] = OOR_state
-			npu = match3.group(1)
-		elif match4:
+			npu = line_list[1]
+		elif 'OOR State' in line:
 			OOR_found = True
-			OOR_state = match4.group(1)
+			OOR_state = line_list[4]
 		elif 'Current Usage' in line:
 			current_usage = True
 			sh_cmd[location][found_memory + ' ' + npu + ' OOR State'] = OOR_state
-		#elif match3 and current_usage == True:
-			#if total_found == True:
-				#sh_cmd[location][found_memory + ' ' + npu + ' Total In-Use'] = total
-			#npu = match3.group(1)
-		elif match5:
+		elif 'NPU' in line and current_usage == True:
+			if total_found == True:
+				sh_cmd[location][found_memory + ' ' + npu + ' Total In-Use'] = total
+			npu = line_list[1]
+		elif 'Total In-Use' in line:
 			total_found = True
-			total = match5.group(1)
-			sh_cmd[location][found_memory + ' ' + npu + ' Total In-Use'] = total
+			total = line_list[4]
     return sh_cmd
 def show_controllers_npu_resources_all_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show controllers npu resources all loc all
 	#Each line being an item in a list
 	#Determine NPU OOR Status
     counters = {'lem Green State': 0, 'lem Other State': 0, 'lpm Green State': 0, 'lpm Other State': 0, 'encap Green State': 0, 'encap Other State': 0,
 				'fec Green State': 0, 'fec Other State': 0, 'ecmp_fec Green State': 0, 'ecmp_fec Other State': 0}
+    regex_string = re.compile('lem')
+    regex_string2 = re.compile('lpm')
+    regex_string3 = re.compile('encap')
+    regex_string4 = re.compile('ecmp_fec')
+    regex_string5 = re.compile('fec')
     for key in sh_cmd_dict:
-		for value in sh_cmd_dict[key]:
-			if 'Total' not in value:
-				if 'lem' in value:
-					if 'Green' in sh_cmd_dict[key][value]:
-						counters['lem Green State'] += 1
-					else:
-						counters['lem Other State'] += 1
-				elif 'lpm' in value:
-					if 'Green' in sh_cmd_dict[key][value]:
-						counters['lpm Green State'] += 1
-					else:
-						counters['lpm Other State'] += 1
-				elif 'encap' in value:
-					if 'Green' in sh_cmd_dict[key][value]:
-						counters['encap Green State'] += 1
-					else:
-						counters['encap Other State'] += 1
-				elif 'ecmp_fec' in value:
-					if 'Green' in sh_cmd_dict[key][value]:
-						counters['ecmp_fec Green State'] += 1
-					else:
-						counters['ecmp_fec Other State'] += 1
-				elif 'fec' in value:
-					if 'Green' in sh_cmd_dict[key][value]:
-						counters['fec Green State'] += 1
-					else:
-						counters['fec Other State'] += 1
+		for entry in sh_cmd_dict[key].items():
+			match = regex_string.search(str(entry))
+			if match:
+				if 'Green' in str(entry):
+					counters['lem Green State'] += 1
+				elif 'Total' in str(entry):
+					pass
+				else:
+					counters['lem Other State'] += 1
+				continue
+			match = regex_string2.search(str(entry))
+			if match:
+				if 'Green' in str(entry):
+					counters['lpm Green State'] += 1
+				elif 'Total' in str(entry):
+					pass
+				else:
+					counters['lpm Other State'] += 1
+				continue
+			match = regex_string3.search(str(entry))
+			if match:
+				if 'Green' in str(entry):
+					counters['encap Green State'] += 1
+				elif 'Total' in str(entry):
+					pass
+				else:
+					counters['encap Other State'] += 1
+				continue
+			match = regex_string4.search(str(entry))
+			if match:
+				if 'Green' in str(entry):
+					counters['ecmp_fec Green State'] += 1
+				elif 'Total' in str(entry):
+					pass
+				else:
+					counters['ecmp_fec Other State'] += 1
+				continue
+			match = regex_string5.search(str(entry))
+			if match:
+				if 'Green' in str(entry):
+					counters['fec Green State'] += 1
+				elif 'Total' in str(entry):
+					pass
+				else:
+					counters['fec Other State'] += 1
     return counters
 def show_controllers_fia_diag_alloc_all_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.0.0"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show controllers fia diagshell 0 "diag alloc all" location all
 	#Each line being an item in a list
 	#Determine resource allocation
     sh_cmd = {}
     found_location = False
-    regex_node = re.compile('Node ID: (\d\/\d+\/CPU0)')
     regex_string = re.compile('^(\^M)?\s(.*\S+)\s+Total number of entries: (\d+)\s+Used entries (\d+).*$')
     current_usage = False
     OOR_found = False
     total_found = False
     for line in file:
-		match = regex_node.search(line)
-		if match:
+		if len(line) != 0:
+			line_list = re.split(r'\s{1,}', line)
+		else:
+			continue
+		if 'Node' in line:
 			found_location = True
-			location = match.group(1)
+			location = line_list[2]
 			sh_cmd[location] = {}
 		elif found_location == True:
 			match = regex_string.search(line)
@@ -2342,6 +2459,11 @@ def ncs6k_admin_show_controller_fabric_plane_all_detail_compare(file):
     regex = re.compile('(\d)\s+(\S+)\s+(\S+)\s+\S+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
     found_group = False
     for line in file:
+        #logger.debug("show int line is: " + line)
+        if len(line) != 0:
+            line_list = re.split(r'\s{1,}', line)
+        else:
+            continue
         if "-----------------" in line:
             found_group = True
             continue

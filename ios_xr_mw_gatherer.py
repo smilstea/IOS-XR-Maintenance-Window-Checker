@@ -1,11 +1,10 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "1.1.1"
+__version__    = "1.1.0"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
-
 global paramiko, telnetlib
 import paramiko, telnetlib
 global os, time
@@ -14,10 +13,11 @@ import sys
 import getpass
 import re
 
+
 def task():
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
     key = 1
     is_error = False
@@ -84,8 +84,8 @@ def task():
 					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show bgp vrf all ipv4 unicast summary',
 					'show bgp vrf all ipv4 flowspec summary', 'show bgp vrf all ipv4 labeled-unicast summary', 'show bgp vrf all ipv4 multicast summary', 'show bgp vrf all ipv4 mvpn summary',
 					'show bgp vrf all ipv6 unicast summary', 'show bgp vrf all ipv6 flowspec summary', 'show bgp vrf all ipv6 multicast summary', 'show bgp vrf all ipv6 mvpn summary',
-					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show ospfv3 neighbor', 'show ospfv3 vrf all neighbor',
-					'show isis neighbor', 'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
+					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show isis neighbor',
+					'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
 		crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
 		asr9k_commands = ['show pfm loc all']
 		ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
@@ -229,7 +229,7 @@ def sshconnect(ipv4_addr, username, password, port, outfile, commands, crs_comma
 def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.0"
 	###__status__     = "alpha"
 	#telnet login and actions
     try:
@@ -264,7 +264,7 @@ def telnetconnect(ipv4_addr, username, password, port, outfile, commands, crs_co
 		platform = tn.read_until(prompt,60)
 		if 'cisco ASR9K' in platform:
 			commands.extend(asr9k_commands)
-		elif 'isco CRS' in platform:
+		elif 'cisco CRS' in platform:
 			commands.extend(crs_commands)
 		elif 'cisco NCS-5500' in platform:
 			commands.extend(ncs5500_commands)

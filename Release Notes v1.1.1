@@ -1,0 +1,88 @@
+Release 1.1.1
+
+- This is the 3rd release of ios_xr_mw_gatherer.py and ios_xr_mw_comparer.py.
+- Combined these two scripts achieve the overall goal of having an output file from before and after a MW (or any type of event) detailing the state of the router for multiple routing protocols as well as the state of the OS. The second task ios_xr_mw_comparer achieves the goal of parsing these outputs and determining what information is relevant and has changed.
+- The main problems these scripts attack is not knowing what commands to capture pre and post MW, and having to sort through lots of irrelevant data when doing a diff (like timestamps, uptime, etc).
+
+New Commands Added:
+- show ospfv3 neighbor
+- show ospfv3 vrf all neighbor
+
+
+
+New Platforms Added:
+- none
+
+Enhancements:
+- Improved logic and reliability
+- Removed line_list where possible as it proved unreliable, still a work in progress
+
+Routing Features Checked in v1.1.1:
+- IPv4 Interface state
+- IPv6 Interface state
+- Default VRF route summary
+- VRF Route Summary
+- BGP VRF Default, all AF, neighbor state and route summary for IPv4 and IPv6
+- BGP VRF IPv4 AF, neighbor state and route summary
+- BGP VRF IPv6 AF, neighbor state and route summary
+- l2vpn xconnect circuit status
+- l2vpn bridge domain AC / VNI / PW / etc status
+- nV satellite ICL and overall status
+- OSPF neighbor state
+- OSPF VRF neighbor state
+- OSPFv3 neighbor state
+- OSPFv3 VRF neighbor state
+- ISIS adjacency state
+- MPLS LDP neighbor, GR, NSR state
+- MPLS TE tunnel state and destination state (overall tunnel and also individual destination for P2MP)
+- BFD IPv4 and IPv6 session state
+
+OS Features Checked in v1.1.1
+- Memory summary for each location
+- Free space on disk0, disk1, and harddisk for each location
+- Process redundancy group state
+
+CRS Features Checked in v1.1.1
+- Fabric plane summary
+- Fabric link health
+
+ASR9K Features Checked in v1.1.1
+- PFM alarms
+
+NCS5500 Features Checked in v1.1.1
+- NPU resources
+- NPU entries summary
+
+NCS6K Features Checked in v1.1.1
+- Fabric plane summary
+- Fabric link port health
+
+
+Basic Commands Gathered:
+				commands = ['show platform', 'show install active summary', 'show interface description', 'show ipv6 interface brief', 'show memory summary loc all', 'show filesystem loc all',
+					'show route summary', 'show route vrf all summary', 'show redundancy', 'show bgp all all summary', 'show bgp vrf all ipv4 unicast summary',
+					'show bgp vrf all ipv4 flowspec summary', 'show bgp vrf all ipv4 labeled-unicast summary', 'show bgp vrf all ipv4 multicast summary', 'show bgp vrf all ipv4 mvpn summary',
+					'show bgp vrf all ipv6 unicast summary', 'show bgp vrf all ipv6 flowspec summary', 'show bgp vrf all ipv6 multicast summary', 'show bgp vrf all ipv6 mvpn summary',
+					'show l2vpn xconnect', 'show l2vpn bridge detail', 'show nv satellite status', 'show ospf neighbor', 'show ospf vrf all neighbor', 'show ospfv3 neighbor', 'show ospfv3 vrf all neighbor',
+					'show isis neighbor', 'show mpls ldp neighbor brief', 'show mpls traffic-eng tunnels p2p', 'show mpls traffic-eng tunnels p2mp', 'show bfd session']
+
+					
+CRS Commands Gathered
+crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
+
+
+ASR9K Commands Gathered
+asr9k_commands = ['show pfm loc all']
+
+
+NCS5500 Commands Gathered
+ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
+
+
+NCS6K Commands Gathered
+ncs6000_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link port s1 tx state down', 'admin show controller fabric link port s1 tx state mismatch',
+							'admin show controller fabric link port s1 rx state down', 'admin show controller fabric link port s1 rx state mismatch', 'admin show controller fabric link port fia tx state down',
+							'admin show controller fabric link port fia tx state mismatch', 'admin show controller fabric link port fia rx state down', 'admin show controller fabric link port fia rx state mismatch',
+							'admin show controller fabric link port s2 tx state down', 'admin show controller fabric link port s2 tx state mismatch', 'admin show controller fabric link port s2 rx state down',
+							'admin show controller fabric link port s2 rx state mismatch', 'admin show controller fabric link port s3 tx state down', 'admin show controller fabric link port s3 tx state mismatch',
+							'admin show controller fabric link port s3 rx state down', 'admin show controller fabric link port s3 rx state mismatch']

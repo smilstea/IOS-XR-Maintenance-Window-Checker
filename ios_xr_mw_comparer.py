@@ -1,7 +1,7 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "1.1.1"
+__version__    = "1.1.2"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
@@ -968,7 +968,7 @@ def show_platform_totals(sh_plat):
 def show_install_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show install active summary
 	#Each line being an item in a list
@@ -976,30 +976,15 @@ def show_install_compare(file):
     pkg_num = 0
     found_start = False
     sh_cmd = {}
+    regex_string = re.compile('.*disk.*:.*')
     for line in file:
 		#logger.debug("show int line is: " + line)
 		if 'Active Packages' in line:
 			found_start = True
-			continue
 		if found_start:
-			if len(line) < 3:
-				break
-			else:
-				try:
-					line_list = re.split(r'-', line)
-					pkg_type = line_list[1]
-					pkg_num += 1
-					if line_list[1] == "px" or line_list[1] == "p":
-						pkg_type = line_list[2]
-					elif line_list[1] == "services":
-						if line_list[2] != "px" or line_list[2] != "p":
-							pkg_type = line_list[1] + "-" + line_list[2]
-					elif pkg_type == "services" or pkg_type == "9000v":
-						pkg_type = line_list[1] + "-" + line_list[2]
-					sh_cmd[pkg_type] = {}
-					sh_cmd[pkg_type]['name'] = line
-				except Exception as e:
-					print("error " + str(e))
+			match = regex_string.search(line)
+			if match:
+				sh_cmd[match.group(0)] = {}
     return sh_cmd
 def show_install_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"
@@ -1016,13 +1001,13 @@ def show_install_totals(sh_cmd_dict):
 def show_interface_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.1"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show interface description
 	#Each line being an item in a list
 	#Determine if status for an interface has changed
     found_start = False
-    regex_string = re.compile('(\S+)\s+(\S+)\s+(\S+)(\s+(\S+))?')
+    regex_string = re.compile('(\S+)\s+(\S+)\s+(\S+)(\s+(\S+.*))?')
     sh_int = {}
     for line in file:
 		match = regex_string.search(line)
@@ -1102,39 +1087,34 @@ def show_ipv6_interface_totals(sh_int):
 def show_memory_summary_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show memory summary
 	#Each line being an item in a list
 	#Determine if memory has changed
     sh_cmd = {}
-    found_node = False
+    regex_node = re.compile('node:\s+(\S+)')
+    regex_appl = re.compile('Application Memory : (\S+\s\(\S+\s\S+\))')
+    regex_image = re.compile('Image: (\S+\s\(\S+\s\S+\))')
+    regex_reserved = re.compile('Reserved: (\S+\s\S+\s\S+\s\S+\s\S+)')
+    regex_shared = re.compile('Total shared window: (\S+)')
     for line in file:
-		try:
-			if len(line) != 0:
-				line_list = re.split(r'\s{1,}', line)
-			else:
-				continue
-			if 'node:' in line:
-				found_node = True
-				node = line_list[1]
-				sh_cmd[node] = {}
-				continue
-			elif '-------------' in line:
-				continue
-			elif found_node and "Application Memory" in line:
-				sh_cmd[node]["Appl Memory"] = line_list[4] + " " + line_list[5] + " " + line_list[6]
-			elif found_node and "Image" in line:
-				sh_cmd[node]["Image"] = line_list[2]
-			elif found_node and "Reserved" in line:
-				sh_cmd[node]["Reserved"] = line_list[2]
-				sh_cmd[node]["IOMem"] = line_list[4]
-				sh_cmd[node]["flashfsys"] = line_list[6]
-			elif found_node and "Total shared window" in line:
-				sh_cmd[node]["Total shared"] = line_list[4]
-				found_node = False
-		except Exception as e:
-			print("error " + str(e))
+		match = regex_node.search(line)
+		if match:
+			node = match.group(1)
+			sh_cmd[node] = {}
+		match1 = regex_appl.search(line)
+		match2 = regex_image.search(line)
+		match3 = regex_reserved.search(line)
+		match4 = regex_shared.search(line)
+		if match1:
+			sh_cmd[node]["Appl Memory"] = match1.group(1)
+		elif match2:
+			sh_cmd[node]["Image"] = match2.group(1)
+		elif match3:
+			sh_cmd[node]["Reserved"] = match3.group(1)
+		elif match4:
+			sh_cmd[node]["Total shared"] = match4.group(1)
     return sh_cmd
 def show_memory_summary_totals(sh_cmd_dict):	
 	###__author__     = "Sam Milstead"
@@ -1151,76 +1131,73 @@ def show_memory_summary_totals(sh_cmd_dict):
 def show_filesystem_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show filesystem
 	#Each line being an item in a list
 	#Determine if disk space has changed
     sh_cmd = {}
     found_node = False
+    regex_node = re.compile('node:\s+(\S+)')
+    regex_free = re.compile('\d+\s+(\S+)')
     for line in file:
-		try:
-			if len(line) != 0:
-				line_list = re.split(r'\s{1,}', line)
-			else:
-				continue
-			if 'node:' in line:
-				found_node = True
-				node = line_list[2]
-				sh_cmd[node] = {}
-				continue
-			elif '-------------' in line:
-				continue
-			elif found_node and "lcdisk0:" in line:
-				continue
-			elif found_node and "qsm/disk0:" in line:
-				continue
-			elif found_node and "qsm/harddisk:" in line:
-				continue
-			elif found_node and "qsm/disk1:" in line:
-				continue
-			elif found_node and "qsm_/dumper_disk0:" in line:
-				continue
-			elif found_node and "qsm_/dumper_disk1:" in line:
-				continue
-			elif found_node and "qsm_/dumper_harddisk:" in line:
-				continue
-			elif found_node and "disk0:" in line:
-				try:
-					megabytes = int(line_list[2])*0.000001
+		match = regex_node.search(line)
+		if match:
+			found_node = True
+			node = match.group(1)
+			sh_cmd[node] = {}
+		elif found_node and "lcdisk0:" in line:
+			continue
+		elif found_node and "qsm/disk0:" in line:
+			continue
+		elif found_node and "qsm/harddisk:" in line:
+			continue
+		elif found_node and "qsm/disk1:" in line:
+			continue
+		elif found_node and "qsm_/dumper_disk0:" in line:
+			continue
+		elif found_node and "qsm_/dumper_disk1:" in line:
+			continue
+		elif found_node and "qsm_/dumper_harddisk:" in line:
+			continue
+		elif found_node and "disk0:" in line:
+			match1 = regex_free.search(line)
+			try:
+				if match1:
+					megabytes = int(match1.group(1))*0.000001
 					megabytes = int(megabytes)
 					sh_cmd[node]["disk0: Free Space in MB"] = megabytes
-				except Exception as e:
-					if line_list[2] == 0:
-						sh_cmd[node]["disk0: Free Space in MB"] = line_list[2]
-					else:
-						sh_cmd[node]["disk0: Free Space in Bytes"] = line_list[2]
-			elif found_node and "disk1:" in line:
-				try:
-					megabytes = int(line_list[2])*0.000001
-					megabytes = int(megabytes)
-					sh_cmd[node]["disk1: Free Space in MB"] = megabytes
-				except Exception as e:
-					if line_list[2] == 0:
-						sh_cmd[node]["disk1: Free Space in MB"] = line_list[2]
-					else:
-						sh_cmd[node]["disk1: Free Space in Bytes"] = line_list[2]
-			elif found_node and " harddisk:" in line:
-				try:
-					megabytes = int(line_list[2])*0.000001
-					megabytes = int(megabytes)
-					sh_cmd[node]["harddisk: Free Space in MB"] = megabytes
-				except Exception as e:
-					if line_list[2] == 0:
-						sh_cmd[node]["harddisk: Free Space in MB"] = line_list[2]
-					else:
-						sh_cmd[node]["harddisk: Free Space in Bytes"] = line_list[2]
-			elif found_node and "bootflash:" in line:
-				found_node = False
-			elif found_node and "nvram:" in line:
-				found_node = False
-		except Exception as E:
-			print("error " + str(e))
+			except Exception as e:
+				if match1.group(1) == 0:
+						sh_cmd[node]["disk0: Free Space in MB"] = match1.group(1)
+				else:
+					sh_cmd[node]["disk0: Free Space in Bytes"] = match1.group(1)
+		elif found_node and "disk1:" in line:
+			match1 = regex_free.search(line)
+			try:
+				megabytes = int(match1.group(1))*0.000001
+				megabytes = int(megabytes)
+				sh_cmd[node]["disk1: Free Space in MB"] = megabytes
+			except Exception as e:
+				if match1.group(1) == 0:
+					sh_cmd[node]["disk1: Free Space in MB"] = match1.group(1)
+				else:
+					sh_cmd[node]["disk1: Free Space in Bytes"] = match1.group(1)
+		elif found_node and " harddisk:" in line:
+			match1 = regex_free.search(line)
+			try:
+				megabytes = int(match1.group(1))*0.000001
+				megabytes = int(megabytes)
+				sh_cmd[node]["harddisk: Free Space in MB"] = megabytes
+			except Exception as e:
+				if match1.group(1) == 0:
+					sh_cmd[node]["harddisk: Free Space in MB"] = match1.group(1)
+				else:
+					sh_cmd[node]["harddisk: Free Space in Bytes"] = match1.group(1)
+		elif found_node and "bootflash:" in line:
+			found_node = False
+		elif found_node and "nvram:" in line:
+			found_node = False
     return sh_cmd
 def show_filesystem_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1244,59 +1221,88 @@ def show_filesystem_totals(sh_cmd_dict):
 def show_route_summary_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show route summary
 	#Each line being an item in a list
 	#Determine if number of routes has changed
     sh_cmd = {}
     found_vrf = False
+    regex_connected = re.compile('connected\s+(\d+)')
+    regex_local_vrrp = re.compile('local VRRP\s+(\d+)')
+    regex_local_hsrp = re.compile('local HSRP\s+(\d+)')
+    regex_local_lspv = re.compile('local LSPV\s+(\d+)')
+    regex_local_smiap = re.compile('local SMIAP\s+(\d+)')
+    regex_local = re.compile('local\s+(\d+)')
+    regex_static = re.compile('static\s+(\d+)')
+    regex_appl = re.compile('application\s+(\d+)')
+    regex_subscriber = re.compile('subscriber\s+(\d+)')
+    regex_isis = re.compile('isis\s+(\S+)\s+(\d+)')
+    regex_dagr = re.compile('dagr\s+(\d+)')
+    regex_bgp = re.compile('bgp\s+(\S+)\s+(\d+)')
+    regex_eigrp = re.compile('eigrp\s+(\S+)\s+(\d+)')
+    regex_ospf = re.compile('ospf\s+(\S+)\s+(\d+)')
+    regex_total = re.compile('Total\s+(\d+)')
+    regex_vrf = re.compile('VRF:\s(\S+)')
     for line in file:
-		if len(line) != 0:
-			line_list = re.split(r'\s{1,}', line)
-		else:
-			continue
+		match = regex_connected.search(line)
+		match1 = regex_local_vrrp.search(line)
+		match2 = regex_local_hsrp.search(line)
+		match3 = regex_local_lspv.search(line)
+		match4 = regex_local_smiap.search(line)
+		match5 = regex_local.search(line)
+		match6 = regex_static.search(line)
+		match7 = regex_appl.search(line)
+		match8 = regex_subscriber.search(line)
+		match9 = regex_isis.search(line)
+		match10 = regex_dagr.search(line)
+		match11 = regex_bgp.search(line)
+		match12 = regex_eigrp.search(line)
+		match13 = regex_ospf.search(line)
+		match14 = regex_total.search(line)
 		if found_vrf == False:
 			if 'Route Source' in line:
 				found_vrf = True
-				vrf = line_list[1]
+				vrf = 'default'
 				sh_cmd[vrf] = {}
 				continue
 		elif 'VRF:' in line:
 			found_vrf = True
-			vrf = line_list[1]
+			match15 = regex_vrf.search(line)
+			vrf = match15.group(1)
 			sh_cmd[vrf] = {}
 			continue
-		elif found_vrf and "connected" in line:
-			sh_cmd[vrf]["Connected Routes"] = line_list[1]
-		elif found_vrf and "local VRRP" in line:
-			sh_cmd[vrf]["Local VRRP Routes"] = line_list[2]
-		elif found_vrf and "local HSRP" in line:
-			sh_cmd[vrf]["Local HSRP Routes"] = line_list[2]                                                  
-		elif found_vrf and "local LSPV" in line:
-			sh_cmd[vrf]["Local LSPV Routes"] = line_list[2] 
-		elif found_vrf and "local SMIAP" in line:
-			sh_cmd[vrf]["Local SMIAP Routes"] = line_list[2] 
-		elif found_vrf and "local" in line:
-			sh_cmd[vrf]["Local Routes"] = line_list[1]
-		elif found_vrf and "static" in line:
-			sh_cmd[vrf]["Static Routes"] = line_list[1]
-		elif found_vrf and "application" in line:
-			sh_cmd[vrf]["Application Routes"] = line_list[1]
-		elif found_vrf and "subscriber" in line:
-			sh_cmd[vrf]["Subscriber Routes"] = line_list[1]
-		elif found_vrf and "isis" in line:
-			sh_cmd[vrf]["isis " + line_list[1] + " Routes"] = line_list[2]
-		elif found_vrf and "dagr" in line:
-			sh_cmd[vrf]["Dagr Routes"] = line_list[1]
-		elif found_vrf and "bgp" in line:
-			sh_cmd[vrf]["BGP " + line_list[1] + " Routes"] = line_list[2]
-		elif found_vrf and "eigrp" in line:
-			sh_cmd[vrf]["EIGRP " + line_list[1] + " Routes"] = line_list[2]  
-		elif found_vrf and "ospf" in line:
-			sh_cmd[vrf]["OSPF " + line_list[1] + " Routes"] = line_list[2] 
-		elif found_vrf and "Total" in line:
-			sh_cmd[vrf]["Total Routes"] = line_list[1]
+		elif found_vrf:
+			if match:
+				sh_cmd[vrf]["Connected Routes"] = match.group(1)
+			elif match1:
+				sh_cmd[vrf]["Local VRRP Routes"] = match1.group(1)
+			elif match2:
+				sh_cmd[vrf]["Local HSRP Routes"] = match2.group(1)                                                  
+			elif match3:
+				sh_cmd[vrf]["Local LSPV Routes"] = match3.group(1)
+			elif match4:
+				sh_cmd[vrf]["Local SMIAP Routes"] = match4.group(1) 
+			elif  match5:
+				sh_cmd[vrf]["Local Routes"] = match5.group(1)
+			elif match6:
+				sh_cmd[vrf]["Static Routes"] = match6.group(1)
+			elif match7:
+				sh_cmd[vrf]["Application Routes"] = match7.group(1)
+			elif match8:
+				sh_cmd[vrf]["Subscriber Routes"] = match8.group(1)
+			elif match9:
+				sh_cmd[vrf]["isis " + match9.group(1) + " Routes"] = match9.group(2)
+			elif match10:
+				sh_cmd[vrf]["Dagr Routes"] = match10.group(1)
+			elif match11:
+				sh_cmd[vrf]["BGP " + match11.group(1) + " Routes"] = match11.group(2)
+			elif match12:
+				sh_cmd[vrf]["EIGRP " + match12.group(1) + " Routes"] = match12.group(2) 
+			elif match13:
+				sh_cmd[vrf]["OSPF " + match13.group(1) + " Routes"] = match13.group(2)
+			elif match14:
+				sh_cmd[vrf]["Total Routes"] = match14.group(1)
     return sh_cmd
 def show_route_summary_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1315,32 +1321,30 @@ def show_route_summary_totals(sh_cmd_dict):
 def show_redundancy_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show redundancy
 	#Each line being an item in a list
 	#Determine if redundancy state has changed
     sh_cmd = {}
     found_group = False
+    regex_search = re.compile('^(\S+)')
     for line in file:
-		if len(line) != 0:
-			line_list = re.split(r'\s{1,}', line)
-		else:
-			continue
+		match = regex_search.search(line)
 		if "---------        ---------" in line:
 			found_group = True
 			continue
 		elif "Process Group Details" in line:
 			found_group = False
 		elif found_group and "Not NSR-Ready" in line:
-			sh_cmd[line_list[0]] = {}
-			sh_cmd[line_list[0]]['status'] = "Not NSR-Ready"
+			sh_cmd[match.group(1)] = {}
+			sh_cmd[match.group(1)]['status'] = "Not NSR-Ready"
 		elif found_group and "Not Ready" in line:
-			sh_cmd[line_list[0]] = {}
-			sh_cmd[line_list[0]]['status'] = "Not Ready"
+			sh_cmd[match.group(1)] = {}
+			sh_cmd[match.group(1)]['status'] = "Not Ready"
 		elif found_group and "Ready" in line:
-			sh_cmd[line_list[0]] = {}
-			sh_cmd[line_list[0]]['status'] = "Ready"
+			sh_cmd[match.group(1)] = {}
+			sh_cmd[match.group(1)]['status'] = "Ready"
     return sh_cmd
 def show_redundancy_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1424,19 +1428,15 @@ def show_bgp_all_all_summary_totals(sh_cmd_dict):
 def show_bgp_vrf_all_ipv4_summary_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show bgp vrf all ipv4 <> summary
 	#Determine if neighbor state or prefixes have changed
     sh_cmd = {}
     found_VRF = False
-    regex_string = re.compile('\d+\.\d+\.\d+\.\d+')
+    regex_string = re.compile('(\d+\.\d+\.\d+\.\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s\S+\s+(\S+)')
     vrf_regex = re.compile('VRF: (\S+)')
     for line in file:
-		if len(line) != 0:
-			line_list = re.split(r'\s{1,}', line)
-		else:
-			continue
 		match = vrf_regex.search(line)
 		if match:
 			found_VRF = True
@@ -1444,9 +1444,9 @@ def show_bgp_vrf_all_ipv4_summary_compare(file):
 			sh_cmd[VRF] = {}
 			continue
 		elif found_VRF:
-			found = regex_string.search(line_list[0])
+			found = regex_string.search(line)
 			if found:
-				sh_cmd[VRF][line_list[0]] = 'Prefix Received: ' + line_list[9]
+				sh_cmd[VRF][found.group(1)] = 'Prefix Received: ' + found.group(2)
     return sh_cmd
 def show_bgp_vrf_all_ipv4_summary_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1470,7 +1470,7 @@ def show_bgp_vrf_all_ipv4_summary_totals(sh_cmd_dict):
 def show_bgp_vrf_all_ipv6_summary_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show bgp vrf all ipv6 <> summary
 	#Determine if neighbor state or prefixes have changed
@@ -1481,10 +1481,6 @@ def show_bgp_vrf_all_ipv6_summary_compare(file):
     ipv6_regex_line2 = re.compile('^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
     vrf_regex = re.compile('VRF: (\S+)')
     for line in file:
-		if len(line) != 0:
-			line_list = re.split(r'\s{1,}', line)
-		else:
-			continue
 		match = vrf_regex.search(line)
 		if match:
 			found_VRF = True
@@ -1492,15 +1488,16 @@ def show_bgp_vrf_all_ipv6_summary_compare(file):
 			sh_cmd[VRF] = {}
 			continue
 		elif found_VRF:
-			found = regex_string.search(line_list[0])
+			found = regex_string.search(line)
 			#sometimes ipv6 neighbors appear on two lines instead of 1
 			if found:
 				neighbor_found = True
-				if len(line_list) == 10:
-					sh_cmd[VRF][line_list[0]] = 'Prefix Received: ' + line_list[9]
+				found2 = ipv6_regex_line2.search(line)
+				if found2:
+					sh_cmd[VRF][found.group(0)] = 'Prefix Received: ' + found2.group(1)
 					neighbor_found = False
 				else:
-					neighbor = line_list[0]
+					neighbor = found.group(0)
 			elif neighbor_found == True:
 				found2 = ipv6_regex_line2.search(line)
 				if found2:
@@ -1529,7 +1526,7 @@ def show_bgp_vrf_all_ipv6_summary_totals(sh_cmd_dict):
 def show_l2vpn_xconnect_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show l2vpn xconnect
 	#Each line being an item in a list
@@ -1537,28 +1534,22 @@ def show_l2vpn_xconnect_compare(file):
     sh_cmd = {}
     found_start = False
     list_test = ['UP', 'DN', 'AD', 'UR', 'SB', 'SR' 'PP']
+    regex_string = re.compile('^(\S+)\s+(\S+)\s+(UP|DN|AD|UR|SB|SR|PP)')
+    regex_string2 = re.compile('^(\S+)\s+(UP|DN|AD|UR|SB|SR|PP)')
     for line in file:
 		if '------------------------' in line:
 			found_start = True
 			continue
 		if found_start:
-			line_list = line.split()
-			if len(line_list) < 5:
-				continue
-			#there is some weird logging message being captured as well
-			#going to add another check so that it won't be caught
-			for item in list_test:
-				if item in line_list[2]:
-					sh_cmd[line_list[0] + ' ' + line_list[1]] = {}
-					sh_cmd[line_list[0] + ' ' + line_list[1]]['Xconnect Status (Overall)'] = line_list[2] 
-				if item in line_list[1]:
-					sh_cmd['Unknown Xconnect Name, With Name: ' + line_list[0]] = {}
-					sh_cmd['Unknown Xconnect Name, With Name: ' + line_list[0]]['Xconnect Status (Overall)'] = line_list[1]    
-				if item in line_list[0]:
-					#sh_cmd_post['Unknown Circuit Name, Line: ' + line] = {}
-					#sh_cmd_post['Unknown Circuit Name, Line: ' + line]['Xconnect Status (Overall)'] = line_list[0]
-					#This causes a duplicate to be made
-					continue
+			match = regex_string.search(line)
+			if match:
+				sh_cmd[match.group(1) + ' ' + match.group(2)] = {}
+				sh_cmd[match.group(1) + ' ' + match.group(2)]['Xconnect Status (Overall)'] = match.group(3) 
+			else:
+				match2 = regex_string2.search(line)
+				if match:
+					sh_cmd['Unknown Xconnect Name, With Name: ' + match2.group(1)] = {}
+					sh_cmd['Unknown Xconnect Name, With Name: ' + match2.group(1)]['Xconnect Status (Overall)'] = match2.group(2)    
     return sh_cmd
 def show_l2vpn_xconnect_totals(sh_cmd):
 	###__author__     = "Sam Milstead"
@@ -1587,7 +1578,7 @@ def show_l2vpn_xconnect_totals(sh_cmd):
 def show_l2vpn_bridge_compare(file):
 	###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.0.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show l2vpn xconnect
 	#Each line being an item in a list
@@ -1595,46 +1586,27 @@ def show_l2vpn_bridge_compare(file):
     sh_cmd = {}
     found_BG = False
     regex_string = re.compile('ACs: (\d+) \((\d+) up\), VFIs: (\d+), PWs: (\d+) \((\d+) up\), PBBs: (\d+) \((\d+) up\), VNIs: (\d+) \((\d+) up\)')
-    #There is an issue where *'s will sometimes appear at the beginning of the string, unknown why, this fixes it
-    regex_string2 = re.compile('^\*\*\*\*\*\*\*\*\*\*')
+    regex_bridge = re.compile('Bridge group: (\S+), bridge-domain: (\S+),')
     for line in file:
-		if len(line) != 0:
-			line_list = re.split(r'\s{1,}', line)
-		else:
-			continue
-		if 'Bridge group:' in line:
+		match = regex_bridge.search(line)
+		if match:
 			found_BG = True
-			BG = line_list[0] + " " + line_list[1]
-			found = regex_string2.search(BG)
-			if found:
-				BG = BG[10:]
-			if line_list[2]:
-				BG += (' ' + line_list[2])
-				BG = BG[:-1:]
-			if line_list[3]:
-				BG += (' ' + line_list[3])
-			if line_list[4]:
-				BG += (' ' + line_list[4])
-				BG = BG[:-1:]
+			BG = match.group(1) + " " + match.group(2)
 			sh_cmd[BG] = {}
-			continue
 		elif '-------------' in line:
 			continue
 		elif found_BG:
-			try:
-				found = regex_string.search(line)
-				if found:
-					sh_cmd[BG]['Total ACs'] = str(found.group(1))
-					sh_cmd[BG]['ACs Up'] =  str(found.group(2))
-					sh_cmd[BG]['Total VFIs'] =  str(found.group(3))
-					sh_cmd[BG]['Total PWs'] =  str(found.group(4))
-					sh_cmd[BG]['PWs Up'] =  str(found.group(5))
-					sh_cmd[BG]['Total PBBs'] =  str(found.group(6))
-					sh_cmd[BG]['PBBs Up'] =  str(found.group(7))
-					sh_cmd[BG]['Total VNIs'] =  str(found.group(8))
-					sh_cmd[BG]['VNIs Up'] =  str(found.group(9))
-			except Exception as e:
-				continue
+			found = regex_string.search(line)
+			if found:
+				sh_cmd[BG]['Total ACs'] = str(found.group(1))
+				sh_cmd[BG]['ACs Up'] =  str(found.group(2))
+				sh_cmd[BG]['Total VFIs'] =  str(found.group(3))
+				sh_cmd[BG]['Total PWs'] =  str(found.group(4))
+				sh_cmd[BG]['PWs Up'] =  str(found.group(5))
+				sh_cmd[BG]['Total PBBs'] =  str(found.group(6))
+				sh_cmd[BG]['PBBs Up'] =  str(found.group(7))
+				sh_cmd[BG]['Total VNIs'] =  str(found.group(8))
+				sh_cmd[BG]['VNIs Up'] =  str(found.group(9))
     return sh_cmd
 def show_l2vpn_bridge_totals(sh_cmd_dict):
 	###__author__     = "Sam Milstead"
@@ -1900,7 +1872,7 @@ def show_mpls_ldp_neighbor_brief_totals(sh_cmd_dict):
 def show_mpls_traffic_eng_tunnels_p2p_compare(file):
     ###__author__     = "Sam Milstead"
 	###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-	###__version__    = "1.1.0"
+	###__version__    = "1.1.2"
 	###__status__     = "alpha"
 	#Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2p
 	#Each line being an item in a list
@@ -1922,8 +1894,12 @@ def show_mpls_traffic_eng_tunnels_p2p_compare(file):
 			if found:
 				sh_cmd['Tunnel ' + tunnel]['Admin State'] = str(found.group(1))
 				sh_cmd['Tunnel ' + tunnel]['Oper State'] = str(found.group(2))
-			if destination_stripped not in sh_cmd['Tunnel ' + tunnel].keys():
-				sh_cmd['Tunnel ' + tunnel]['Destination'] = destination_stripped
+			#this is needed when no destination is configured
+			try:
+				if destination_stripped not in sh_cmd['Tunnel ' + tunnel].keys():
+					sh_cmd['Tunnel ' + tunnel]['Destination'] = destination_stripped
+			except Exception as e:
+				sh_cmd['Tunnel ' + tunnel]['Destination'] = 'no destination'
 		destination = regex_string3.search(line)
 		if destination:
 			destination_stripped = str(destination.group(1))

@@ -1,15 +1,12 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2021 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "2.0.0"
+__version__    = "2.0.1"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
 
-global pexpect, pxssh
 import pexpect
-from pexpect import pxssh
-global os
 import os
 import sys
 import getpass
@@ -124,28 +121,26 @@ def task():
 def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
     ###__author__     = "Sam Milstead"
     ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
-    ###__version__    = "2.0.0"
+    ###__version__    = "2.0.1"
     ###__status__     = "alpha"
     #ssh login and actions
-    s = pxssh.pxssh(options={
-                    "StrictHostKeyChecking": "no",
-                    "UserKnownHostsFile": "/dev/null"})
-    print('Logging in, may take 30s before next output')
-    hostname = ipv4_addr
-    s.PROMPT='RP\S+#'
-    s.login(hostname, username, password, login_timeout=20, auto_prompt_reset=False)
-    s.prompt()
-    s.sendline(b'show clock')
-    s.prompt()
-    s.sendline(b'term length 0')
-    s.prompt()
-    s.sendline(b'term width 0')
-    s.prompt()
-    s.sendline(b'show version')
-    s.prompt()
-    data = s.before
-    data += s.after
-    data = data.decode('ascii')
+    connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr))
+    i = connection.expect(['.* password:', '.* continue connecting (yes/no)?'])
+    if i == 1:
+        connection.sendline('yes')
+        connection.expect('.* password:')
+    connection.sendline(password)
+    connection.expect(r'RP\S+#')
+    connection.sendline(b"term len 0")
+    connection.expect(r'RP\S+#')
+    connection.sendline(b"term width 0")
+    connection.expect(r'RP\S+#')
+    outfile.write("**********")
+    connection.sendline(b"show version")
+    connection.expect(r'RP\S+#')
+    data = connection.before
+    data += connection.after
+    data = data.decode('utf-8')
     outfile.write(data)
     if 'cisco ASR9K' in data:
         commands.extend(asr9k_commands)
@@ -159,19 +154,19 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     i = 0
     for command in commands:
         i += 1
-        s.sendline(command.encode('utf-8'))
-        s.prompt()
-        data = s.before
-        data += s.after
-        data = data.decode('ascii')
+        connection.sendline(command.encode('utf-8'))
+        connection.expect(r'RP\S+#')
+        data = connection.before
+        data += connection.after
+        data = data.decode('utf-8')
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
-    s.logout()
+    connection.close()
     outfile.close()
 def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
     ###__author__     = "Sam Milstead"
     ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
-    ###__version__    = "2.0.0"
+    ###__version__    = "2.0.1"
     ###__status__     = "alpha"
     #telnet login and actions
     connection = pexpect.spawn('telnet ' + ipv4_addr)
@@ -189,7 +184,7 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     connection.expect(r'RP\S+#')
     data = connection.before
     data += connection.after
-    data = data.decode('ascii')
+    data = data.decode('utf-8')
     if 'cisco ASR9K' in data:
         commands.extend(asr9k_commands)
     elif 'isco CRS' in data:
@@ -207,7 +202,7 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
         connection.expect(r'RP\S+#')
         data = connection.before
         data += connection.after
-        data = data.decode('ascii')
+        data = data.decode('utf-8')
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
     connection.close()

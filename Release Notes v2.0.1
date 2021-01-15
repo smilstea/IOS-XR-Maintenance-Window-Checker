@@ -1,24 +1,20 @@
-Release 2.0.0
+Release 2.0.1
 
-- This is the 5th release of ios_xr_mw_gatherer.py and ios_xr_mw_comparer.py.
+- This is the 6th release of ios_xr_mw_gatherer.py and ios_xr_mw_comparer.py.
 - Combined these two scripts achieve the overall goal of having an output file from before and after a MW (or any type of event) detailing the state of the router for multiple routing protocols as well as the state of the OS. The second task ios_xr_mw_comparer achieves the goal of parsing these outputs and determining what information is relevant and has changed.
 - The main problems these scripts attack is not knowing what commands to capture pre and post MW, and having to sort through lots of irrelevant data when doing a diff (like timestamps, uptime, etc).
 
 New Commands Added:
-- show dhcp [ipv4 | ipv6] [server | proxy] binding summary (PI)
-- show ipsla statistics (PI)
-- show subscriber session all summary (ASR9K)
+-none
 
 New Platforms Added:
 - none
 
 Enhancements:
-- Improved logic and reliability
-- Removed line_list where possible as it proved unreliable, still a work in progress
-- Moved to Python3 as Python2 is deprecated and EOL
-- Moved from paramiko and telnetlib which are more difficult to work with to pexpect and pxssh
+- Fixed decode error when using ascii, using utf-8 now
+- Replaced pxssh with regular pexpect for reliability
 
-Routing Features Checked in v2.0.0:
+Routing Features Checked in v2.0.1:
 - IPv4 Interface state
 - IPv6 Interface state
 - Default VRF route summary
@@ -39,24 +35,24 @@ Routing Features Checked in v2.0.0:
 - BFD IPv4 and IPv6 session state
 - DHCP IPv4 and IPv6 proxy and server binding summary
 
-OS Features Checked in v2.0.0
+OS Features Checked in v2.0.1
 - Memory summary for each location
 - Free space on disk0, disk1, and harddisk for each location
 - Process redundancy group state
 
-CRS Features Checked in v2.0.0
+CRS Features Checked in v2.0.1
 - Fabric plane summary
 - Fabric link health
 
-ASR9K Features Checked in v2.0.0
+ASR9K Features Checked in v2.0.1
 - BNG subscriber summary
 - PFM alarms
 
-NCS5500 Features Checked in v2.0.0
+NCS5500 Features Checked in v2.0.1
 - NPU resources
 - NPU entries summary
 
-NCS6K Features Checked in v2.0.0
+NCS6K Features Checked in v2.0.1
 - Fabric plane summary
 - Fabric link port health
 

@@ -125,8 +125,22 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     ###__status__     = "alpha"
     #ssh login and actions
     connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr))
-    i = connection.expect(['.* password:', '.* continue connecting (yes/no)?'])
-    if i == 1:
+    i = connection.expect (['Permission denied|permission denied', 'Terminal type|terminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:'],  timeout=30)
+    #i = connection.expect(['.* password:', '.* continue connecting (yes/no)?'])
+    if i == 0:
+        print("permission denied")
+        sys.exit(3)
+    elif i == 1:
+        print("terminal type")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 4:
+        print("connection closed by host")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 5:
         connection.sendline('yes')
         connection.expect('.* password:')
     connection.sendline(password)

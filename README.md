@@ -4,7 +4,7 @@ Installation Notes
 Scripts were written and tested using python 3.6.8
 
 No installation is required or compiling of the scripts, only requirement is python 3 with following libraries:
-- pexpect, pxssh
+- pexpect
 - os
 - sys
 - getpass

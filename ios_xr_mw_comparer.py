@@ -1638,15 +1638,15 @@ def show_l2vpn_xconnect_totals(sh_cmd):
     return counters
 def show_l2vpn_bridge_compare(file):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.1.2"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show l2vpn xconnect
     #Each line being an item in a list
     #Determine if state has changed for bridge domain
     sh_cmd = {}
     found_BG = False
-    regex_string = re.compile('ACs: (\d+) \((\d+) up\), VFIs: (\d+), PWs: (\d+) \((\d+) up\), PBBs: (\d+) \((\d+) up\), VNIs: (\d+) \((\d+) up\)')
+    regex_string = re.compile('ACs: (\d+) \((\d+) up\), VFIs: (\d+), PWs: (\d+) \((\d+) up\), PBBs: (\d+) \((\d+) up\)')
     regex_bridge = re.compile('Bridge group: (\S+), bridge-domain: (\S+),')
     for line in file:
         match = regex_bridge.search(line)
@@ -1666,8 +1666,6 @@ def show_l2vpn_bridge_compare(file):
                 sh_cmd[BG]['PWs Up'] =  str(found.group(5))
                 sh_cmd[BG]['Total PBBs'] =  str(found.group(6))
                 sh_cmd[BG]['PBBs Up'] =  str(found.group(7))
-                sh_cmd[BG]['Total VNIs'] =  str(found.group(8))
-                sh_cmd[BG]['VNIs Up'] =  str(found.group(9))
     return sh_cmd
 def show_l2vpn_bridge_totals(sh_cmd_dict):
     ###__author__     = "Sam Milstead"

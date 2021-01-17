@@ -124,8 +124,8 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     ###__version__    = "2.0.1"
     ###__status__     = "alpha"
     #ssh login and actions
-    connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr))
-    i = connection.expect (['Permission denied|permission denied', 'Terminal type|terminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:'],  timeout=30)
+    connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr), timeout=300, maxread=1)
+    i = connection.expect (['Permission denied|permission denied', 'Terminal type|terminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed'],  timeout=30)
     #i = connection.expect(['.* password:', '.* continue connecting (yes/no)?'])
     if i == 0:
         print("permission denied")
@@ -143,6 +143,9 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     elif i == 5:
         connection.sendline('yes')
         connection.expect('.* password:')
+    elif i == 7:
+        print("Authentication failure")
+        sys.exit(3)
     connection.sendline(password)
     connection.expect(r'RP\S+#')
     connection.sendline(b"term len 0")
@@ -169,10 +172,13 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     for command in commands:
         i += 1
         connection.sendline(command.encode('utf-8'))
-        connection.expect(r'RP\S+#')
-        data = connection.before
-        data += connection.after
-        data = data.decode('utf-8')
+        data = ""
+        n = 1
+        while n == 1:
+            try:
+                data += connection.read_nonblocking(size=999,timeout=10).decode('utf-8')
+            except pexpect.exceptions.TIMEOUT:
+                n = 0
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
     connection.close()
@@ -183,7 +189,7 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     ###__version__    = "2.0.1"
     ###__status__     = "alpha"
     #telnet login and actions
-    connection = pexpect.spawn('telnet ' + ipv4_addr)
+    connection = pexpect.spawn('telnet ' + ipv4_addr, timeout=300, maxread=1)
     connection.expect('Username:')
     connection.sendline(username)
     connection.expect('Password:')
@@ -213,10 +219,13 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     for command in commands:
         i += 1
         connection.sendline(command.encode('utf-8'))
-        connection.expect(r'RP\S+#')
-        data = connection.before
-        data += connection.after
-        data = data.decode('utf-8')
+        data = ""
+        n = 1
+        while n == 1:
+            try:
+                data += connection.read_nonblocking(size=999,timeout=10).decode('utf-8')
+            except pexpect.exceptions.TIMEOUT:
+                n = 0
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
     connection.close()

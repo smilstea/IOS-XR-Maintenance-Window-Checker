@@ -1,21 +1,21 @@
-Release 2.0.1
+Release 2.0.2
 
-- This is the 6th release of ios_xr_mw_gatherer.py and ios_xr_mw_comparer.py.
+- This is the 7th release of ios_xr_mw_gatherer.py and ios_xr_mw_comparer.py.
 - Combined these two scripts achieve the overall goal of having an output file from before and after a MW (or any type of event) detailing the state of the router for multiple routing protocols as well as the state of the OS. The second task ios_xr_mw_comparer achieves the goal of parsing these outputs and determining what information is relevant and has changed.
 - The main problems these scripts attack is not knowing what commands to capture pre and post MW, and having to sort through lots of irrelevant data when doing a diff (like timestamps, uptime, etc).
 
 New Commands Added:
--none
+- show virtual-service list, show services interface, show services role detail, show services redundancy (ASR9k VSM)
 
 New Platforms Added:
 - none
 
 Enhancements:
-- Fixed decode error when using ascii, using utf-8 now
-- Replaced pxssh with regular pexpect for reliability
-- Fixed long outputs hanging indefinitely
+- Fixed reading of large output by gatherer script
+- Added --minimal --timeout and --vsm keyword switches and associated functionality
+- Minor cosmetic defects
 
-Routing Features Checked in v2.0.1:
+Routing Features Checked in v2.0.2:
 - IPv4 Interface state
 - IPv6 Interface state
 - Default VRF route summary
@@ -36,24 +36,30 @@ Routing Features Checked in v2.0.1:
 - BFD IPv4 and IPv6 session state
 - DHCP IPv4 and IPv6 proxy and server binding summary
 
-OS Features Checked in v2.0.1
+OS Features Checked in v2.0.2
 - Memory summary for each location
 - Free space on disk0, disk1, and harddisk for each location
 - Process redundancy group state
 
-CRS Features Checked in v2.0.1
+CRS Features Checked in v2.0.2
 - Fabric plane summary
 - Fabric link health
 
-ASR9K Features Checked in v2.0.1
+ASR9K Features Checked in v2.0.2
 - BNG subscriber summary
 - PFM alarms
 
-NCS5500 Features Checked in v2.0.1
+ASR9K VSM Features Checked in v2.0.2
+- Service status and software
+- Service interface status
+- Service role status
+- Service redundancy status
+
+NCS5500 Features Checked in v2.0.2
 - NPU resources
 - NPU entries summary
 
-NCS6K Features Checked in v2.0.1
+NCS6K Features Checked in v2.0.2
 - Fabric plane summary
 - Fabric link port health
 
@@ -74,6 +80,10 @@ crs_commands = ['admin show controller fabric plane all detail', 'admin show con
 
 ASR9K Commands Gathered
 asr9k_commands = ['show subscriber session all summary', 'show pfm loc all']
+
+
+ASR9K VSM Commands Gathered
+vsm_commands =  ['show virtual-service list', 'show services interface', 'show services role detail', 'show services redundancy']
 
 
 NCS5500 Commands Gathered

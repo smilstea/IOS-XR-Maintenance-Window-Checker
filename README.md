@@ -22,14 +22,36 @@ python ios_xr_mw_gatherer.py --file post_mw_file --ipv4addr 172.18.120.188 --use
 python ios_xr_mw_comparer.py --pre pre_mw_file --post post_mw_file --compare comparison_filename
 
 Syntax for each file is below:
-Usage: python ios_xr_mw_gatherer.py [--file <filename>][--ipv4addr <ipv4 address>][--username <username>]{--ssh}
-Usage: python ios_xr_mw_comparer.py [--pre <filename>|--post <filename>][--compare <filename>]
+Usage: python ios_xr_mw_gatherer.py [--file <filename>][--ipv4addr <ipv4 address>][--username <username>](--ssh)(--timeout <seconds>) (--vsm)
+Usage: python ios_xr_mw_comparer.py [--pre <filename>|--post <filename>][--compare <filename>](--minimal)(--vsm)
+
+
+=========================
+Special Keywords
+=========================
+--timeout
+Specifies the timeout from commands, by default this is 10s for a few reasons.
+1. Because some commands may not output immediately
+2. Some commands pause mid-way through output
+3. General delay in getting data output
+This allows for the collection of outputs properly as they are generated and a pause in case a command does not output immediately, pauses, or python catches up to the end of the available data
+Using this keyword and changing the timeout is NOT recommended.
+The downside is that after a command stops outputing data there will be a 10s delay before executing the next command, with 30 or 40 commands that means 300 or 400 extra seconds.
+
+--vsm
+Specifies to get ASR9K VSM specific outputs, without this option no VSM commands will be run
+
+--minimal
+Reduces the output of the comparer script so that only WARNINGs are output on the terminal and only a summary view like without this keyword are printed to the compare file.
+Without minimal a summary of all commands whether there is an alarm raised or not will be printed, and in the compare file a full dump of all the 'relevant' data used for comparions which is very verbose
+
 
 =======================
 Output
 =======================
 Some output will be displayed on the screen, but this is kept to a minimum, only displaying differences or a summary for each command.
 Outfiles will have the full outputs.
+
 
 =========================
 Bugs / Enhancements / etc

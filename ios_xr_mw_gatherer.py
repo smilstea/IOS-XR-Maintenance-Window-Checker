@@ -1,7 +1,9 @@
+#!/usr/bin/env python
+
 __author__     = "Sam Milstead"
-__copyright__  = "Copyright 2021 (C) Cisco TAC"
+__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "2.0.1"
+__version__    = "2.0.2"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
@@ -14,15 +16,18 @@ import re
 
 def task():
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.1.3"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
     ###__status__     = "alpha"
     key = 1
     is_error = False
+    global vsm
+    vsm = False
     ssh = False
     file = ''
     ipv4_addr = ''
     username = ''
+    timeout = ''
     for index, arg in enumerate(sys.argv):
         if arg in ['--file'] and len(sys.argv) > index + 1:
             file = str(sys.argv[index + 1])
@@ -47,7 +52,18 @@ def task():
             del sys.argv[index]
             break
     for index, arg in enumerate(sys.argv):
+        if arg in ['--timeout', '-t'] and len(sys.argv) > index + 1:
+            timeout = int(sys.argv[index + 1])
+            del sys.argv[index]
+            del sys.argv[index]
+            break
+    for index, arg in enumerate(sys.argv):
         if arg in ['--help', '-h']:
+            break
+    for index, arg in enumerate(sys.argv):
+        if arg in ['--vsm']:
+            vsm = True
+            del sys.argv[index]
             break
     if len(sys.argv) > 1:
         is_error = True
@@ -58,7 +74,7 @@ def task():
 
     if is_error:
         print(str(sys.argv))
-        print("Usage: python {" + sys.argv[0] + "} [--file <filename>][--ipv4addr <ipv4 address>][--username <username>](--ssh)")
+        print("Usage: python3 {" + sys.argv[0] + "} [--file <filename>][--ipv4addr <ipv4 address>][--username <username>](--ssh)(--timeout <seconds>) (--vsm)")
         return
     else:
         if file:
@@ -73,6 +89,14 @@ def task():
         if not ipv4_addr:
             print("Please use --ipv4addr and enter the routers ipv4 address")
             return
+        if not timeout:
+            print("Timeout of command gathering set to default of 10s")
+            timeout = 10
+        else:
+            if timeout < 1:
+                print("Invalid timeout, enter '1' or greater")
+                return
+            print("Timeout of command gathering set to " + str(timeout))
     if ipv4_addr and username:
         if os.path.isfile(filename):
             print("Filename exists, please choose a non-existing filename")
@@ -87,6 +111,7 @@ def task():
                     'show dhcp ipv4 server binding summary', 'show dhcp ipv6 proxy binding summary', 'show dhcp ipv6 server binding summary', 'show ipsla statistics']
         crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
         asr9k_commands = ['show subscriber session all summary', 'show pfm loc all']
+        vsm_commands =  ['show virtual-service list', 'show services interface', 'show services role detail', 'show services redundancy']
         ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
         ncs6000_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link port s1 tx state down', 'admin show controller fabric link port s1 tx state mismatch',
                             'admin show controller fabric link port s1 rx state down', 'admin show controller fabric link port s1 rx state mismatch', 'admin show controller fabric link port fia tx state down',
@@ -101,7 +126,7 @@ def task():
         #######
         if ssh:
             try:
-                sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands)
+                sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands, timeout, vsm_commands)
             except Exception as e:
                 print("SSH error " + str(e))
                 return()
@@ -111,22 +136,21 @@ def task():
         else:
             try:
                 print("Trying telnet")
-                telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands)
+                telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands, timeout, vsm_commands)
             except Exception as e:
                 print("Telnet error " + str(e))
                 return
     else:
         print("Field(s) are missing for logging into the router")
         return
-def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
+def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands, timeout, vsm_commands):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
-    ###__version__    = "2.0.1"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
     ###__status__     = "alpha"
     #ssh login and actions
     connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr), timeout=300, maxread=1)
     i = connection.expect (['Permission denied|permission denied', 'Terminal type|terminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed'],  timeout=30)
-    #i = connection.expect(['.* password:', '.* continue connecting (yes/no)?'])
     if i == 0:
         print("permission denied")
         sys.exit(3)
@@ -147,7 +171,10 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
         print("Authentication failure")
         sys.exit(3)
     connection.sendline(password)
-    connection.expect(r'RP\S+#')
+    i = connection.expect(['Permission denied|permission denied', r'RP\S+#'])
+    if i == 0:
+        print("permission denied")
+        sys.exit(3)
     connection.sendline(b"term len 0")
     connection.expect(r'RP\S+#')
     connection.sendline(b"term width 0")
@@ -161,6 +188,8 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     outfile.write(data)
     if 'cisco ASR9K' in data:
         commands.extend(asr9k_commands)
+        if vsm == True:
+            commands.extend(vsm_commands)
     elif 'isco CRS' in data:
         commands.extend(crs_commands)
     elif 'cisco NCS-5500' in data:
@@ -176,17 +205,17 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
         n = 1
         while n == 1:
             try:
-                data += connection.read_nonblocking(size=999,timeout=10).decode('utf-8')
+                data += connection.read_nonblocking(size=999,timeout=timeout).decode('utf-8')
             except pexpect.exceptions.TIMEOUT:
                 n = 0
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
     connection.close()
     outfile.close()
-def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands):
+def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands, timeout, vsm_commands):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
-    ###__version__    = "2.0.1"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
     ###__status__     = "alpha"
     #telnet login and actions
     connection = pexpect.spawn('telnet ' + ipv4_addr, timeout=300, maxread=1)
@@ -194,7 +223,10 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     connection.sendline(username)
     connection.expect('Password:')
     connection.sendline(password)
-    connection.expect(r'RP\S+#')
+    i = connection.expect(['Username:', r'RP\S+#'])
+    if i == 0:
+        print("permission denied")
+        sys.exit(3)
     connection.sendline(b"term len 0")
     connection.expect(r'RP\S+#')
     connection.sendline(b"term width 0")
@@ -207,6 +239,8 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     data = data.decode('utf-8')
     if 'cisco ASR9K' in data:
         commands.extend(asr9k_commands)
+        if vsm == True:
+            commands.extend(vsm_commands)
     elif 'isco CRS' in data:
         commands.extend(crs_commands)
     elif 'cisco NCS-5500' in data:
@@ -223,7 +257,7 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
         n = 1
         while n == 1:
             try:
-                data += connection.read_nonblocking(size=999,timeout=10).decode('utf-8')
+                data += connection.read_nonblocking(size=999,timeout=timeout).decode('utf-8')
             except pexpect.exceptions.TIMEOUT:
                 n = 0
         outfile.write(data)

@@ -1,7 +1,8 @@
+#!/usr/bin/env python
 __author__     = "Sam Milstead"
-__copyright__  = "Copyright 2021 (C) Cisco TAC"
+__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "2.0.0"
+__version__    = "2.0.2"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
@@ -12,12 +13,15 @@ import re
 
 def task():
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.1.3"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
     ###__status__     = "alpha"
     #Perform all the parsing and then pass values to other functions
     #for making sense of the data and comparison tests
     #Finally output the data to the user and write to the output file
+    global minimal
+    minimal = False
+    vsm = False
     is_error = False
     pre = ''
     post = ''
@@ -43,6 +47,16 @@ def task():
     for index, arg in enumerate(sys.argv):
         if arg in ['--help', '-h']:
             break
+    for index, arg in enumerate(sys.argv):
+        if arg in ['--minimal', '-m']:
+            minimal = True
+            del sys.argv[index]
+            break
+    for index, arg in enumerate(sys.argv):
+        if arg in ['--vsm']:
+            vsm = True
+            del sys.argv[index]
+            break
     if len(sys.argv) > 1:
         is_error = True
     else:
@@ -51,7 +65,7 @@ def task():
                 is_error = True
     if is_error:
         print(str(sys.argv))
-        print("Usage: python {" + sys.argv[0] + "} [--pre <filename>][|--post <filename>][--compare <filename>]")
+        print("Usage: python3 {" + sys.argv[0] + "} [--pre <filename>][|--post <filename>][--compare <filename>](--minimal)(--vsm)")
         return
     else:
         if pre:
@@ -68,7 +82,7 @@ def task():
             print("Pre filename does not exist, please choose an existing filename")
             return
         if not os.path.isfile(post):
-            print("Pre filename does not exist, please choose an existing filename")
+            print("Post filename does not exist, please choose an existing filename")
             return
         if os.path.isfile(compare):
             print("Compare filename exists, please choose a non-existing filename")
@@ -85,6 +99,7 @@ def task():
                     'show dhcp ipv4 server binding summary', 'show dhcp ipv6 proxy binding summary', 'show dhcp ipv6 server binding summary', 'show ipsla statistics']
         crs_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link health']
         asr9k_commands = ['show subscriber session all summary', 'show pfm loc all']
+        vsm_commands =  ['show virtual-service list', 'show services interface', 'show services role detail', 'show services redundancy']
         ncs5500_commands = ['show controllers npu resources all location all', 'show controllers fia diagshell 0 "diag alloc all" location all']
         ncs6000_commands = ['admin show controller fabric plane all detail', 'admin show controller fabric link port s1 tx state down', 'admin show controller fabric link port s1 tx state mismatch',
                             'admin show controller fabric link port s1 rx state down', 'admin show controller fabric link port s1 rx state mismatch', 'admin show controller fabric link port fia tx state down',
@@ -147,6 +162,8 @@ def task():
             post_file.close()   
         if platform == 'asr9k':
             commands.extend(asr9k_commands)
+            if vsm == True:
+                commands.extend(vsm_commands)
         elif platform == 'crs':
             commands.extend(crs_commands)
         elif platform == 'ncs5500':
@@ -653,6 +670,46 @@ def task():
                     ext_text = '\nPFM Alarm Summary:'
                     result = create_result('show pfm loc all', ext_text, pre_counters, pre_totals, post_counters)
                     response = print_results(result, pre_counters, post_counters, outfile)
+                elif command == 'show virtual-service list':
+                    pre_counters = show_virtual_service_list_compare(pre_list)
+                    post_counters = show_virtual_service_list_compare(post_list)
+                    pre_totals = show_virtual_service_list_totals(pre_counters)
+                    post_totals = show_virtual_service_list_totals(post_counters)
+                    pre_counters.update(pre_totals)
+                    post_counters.update(post_totals)
+                    ext_text = '\nVirtual Service List Summary:'
+                    result = create_result('show virtual-service list', ext_text, pre_counters, pre_totals, post_counters)
+                    response = print_results(result, pre_counters, post_counters, outfile)
+                elif command == 'show services interface':
+                    pre_counters = show_services_interface_compare(pre_list)
+                    post_counters = show_services_interface_compare(post_list)
+                    pre_totals = show_services_interface_totals(pre_counters)
+                    post_totals = show_services_interface_totals(post_counters)
+                    pre_counters.update(pre_totals)
+                    post_counters.update(post_totals)
+                    ext_text = '\nServices Interface Summary:'
+                    result = create_result('show services interface', ext_text, pre_counters, pre_totals, post_counters)
+                    response = print_results(result, pre_counters, post_counters, outfile)
+                elif command == 'show services role detail':
+                    pre_counters = show_services_role_detail_compare(pre_list)
+                    post_counters = show_services_role_detail_compare(post_list)
+                    pre_totals = show_services_role_detail_totals(pre_counters)
+                    post_totals = show_services_role_detail_totals(post_counters)
+                    pre_counters.update(pre_totals)
+                    post_counters.update(post_totals)
+                    ext_text = '\nServices Role Detail Summary:'
+                    result = create_result('show services role detail', ext_text, pre_counters, pre_totals, post_counters)
+                    response = print_results(result, pre_counters, post_counters, outfile)
+                elif command == 'show services redundancy':
+                    pre_counters = show_services_redundancy_compare(pre_list)
+                    post_counters = show_services_redundancy_compare(post_list)
+                    pre_totals = show_services_redundancy_totals(pre_counters)
+                    post_totals = show_services_redundancy_totals(post_counters)
+                    pre_counters.update(pre_totals)
+                    post_counters.update(post_totals)
+                    ext_text = '\nServices Redundancy Summary:'
+                    result = create_result('show services redundancy', ext_text, pre_counters, pre_totals, post_counters)
+                    response = print_results(result, pre_counters, post_counters, outfile)
                 elif command == 'show controllers npu resources all location all':
                     pre_counters = show_controllers_npu_resources_all_compare(pre_list)
                     post_counters = show_controllers_npu_resources_all_compare(post_list)
@@ -943,32 +1000,48 @@ def get_changes(the_diffs, my_set, my_set2 = None):
     return diff_info
 def print_results(result, pre_counters, post_counters, outfile):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.0.0"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
     ###__status__     = "alpha"
     #print results to terminal and outfile
-    print("\n**********")
-    outfile.write("\n**********")
-    for value in result:
-        print(value)
-        outfile.write(value)
-    try:
-        outfile.write("\nInitial Values for Pre Counters\n")
-        for key, value in pre_counters.items():
+    severity = ''
+    if minimal == False:
+        print("\n**********")
+        outfile.write("\n**********")
+        for value in result:
+            print(value)
+            outfile.write(value)
+        try:
+            outfile.write("\nInitial Values for Pre Counters\n")
+            for key, value in pre_counters.items():
+                outfile.write(str(key) + "\n")
+                outfile.write(str(pre_counters[key]) + "\n")
+        except Exception as e:
             outfile.write(str(key) + "\n")
-            outfile.write(str(pre_counters[key]) + "\n")
-    except Exception as e:
-        outfile.write(str(key) + "\n")
-        outfile.write(str(pre_counters[key])+ "\n") 
-    try:
-        outfile.write("\nValues for Post Counters\n")
-        for key, value in post_counters.items():
+            outfile.write(str(pre_counters[key])+ "\n") 
+        try:
+            outfile.write("\nValues for Post Counters\n")
+            for key, value in post_counters.items():
+                outfile.write(str(key) + "\n")
+                outfile.write(str(post_counters[key]) + "\n")
+        except Exception as e:
             outfile.write(str(key) + "\n")
-            outfile.write(str(post_counters[key]) + "\n")
-    except Exception as e:
-        outfile.write(str(key) + "\n")
-        outfile.write(str(post_counters[key])+ "\n")        
+            outfile.write(str(post_counters[key])+ "\n")      
+    elif minimal == True:
+        for value in result:
+            if 'Severity INFO' in value:
+                severity = 'info'
+            elif 'Severity WARNING' in value:
+                severity = 'warning'
+                print(value)
+            elif severity == 'warning':
+                print("\n**********")
+                outfile.write("\n**********")
+                print(value)
+            outfile.write(value)    
     return
+    
+
 ####################
 #PI Commands       #
 ####################
@@ -978,7 +1051,6 @@ def show_platform_compare(file, platform):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show platform
-    #Each line being an item in a list
     #Determine Card state and return the pre and post results
     sh_plat = {}
     regex_string = re.compile('(\S+)\s+(\S+\s+\S+(\s\S+)?)\s+(\S+(\s\S+\s\S+)?)\s+(\S+)')
@@ -1010,7 +1082,6 @@ def show_platform_totals(sh_plat):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show platform
-    #Each line being an item in a list
     #Determine totals
     counters = {'Total Cards': 0, 'XR RUN/OK/UP/OPERATIONAL': 0, 'UNPOWERED/POWERED_OFF': 0, 'IN-RESET': 0, 'SW_INACTIVE': 0, 'Other': 0}
     for key in sh_plat:
@@ -1032,7 +1103,6 @@ def show_install_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show install active summary
-    #Each line being an item in a list
     #Determine if all the same packages are loaded
     pkg_num = 0
     found_start = False
@@ -1053,7 +1123,6 @@ def show_install_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show install active summary
-    #Each line being an item in a list
     #Determine total packages
     counters = {'Total Packages': 0}
     for key in sh_cmd_dict:
@@ -1065,7 +1134,6 @@ def show_interface_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show interface description
-    #Each line being an item in a list
     #Determine if status for an interface has changed
     found_start = False
     regex_string = re.compile('(\S+)\s+(\S+)\s+(\S+)(\s+(\S+.*))?')
@@ -1092,7 +1160,6 @@ def show_interface_totals(sh_int):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show interface description
-    #Each line being an item in a list
     #Determine totals
     int_status_cnt = {'Up/Up': 0, 'Up/Down': 0, 'Down/Down': 0, 'Admin Down': 0, 'Other': 0}
     for key in sh_int:
@@ -1113,7 +1180,6 @@ def show_ipv6_interface_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show ipv6 interface brief
-    #Each line being an item in a list
     #Determine if interface status has changed
     sh_int = {}
     regex_match = re.compile('^(\S+)\s+\[(\S+)\/(\S+)\]')
@@ -1130,7 +1196,6 @@ def show_ipv6_interface_totals(sh_int):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show ipv6 interface brief
-    #Each line being an item in a list
     #Determine totals
     int_status_cnt = {'Up/Up': 0, 'Up/Down': 0, 'Down/Down': 0, 'Shutdown': 0, 'Other': 0}
     for key in sh_int:
@@ -1151,7 +1216,6 @@ def show_memory_summary_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show memory summary
-    #Each line being an item in a list
     #Determine if memory has changed
     sh_cmd = {}
     regex_node = re.compile('node:\s+(\S+)')
@@ -1183,7 +1247,6 @@ def show_memory_summary_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show memory summary
-    #Each line being an item in a list
     #Nothing of importance yet
     counters = {'Total Nodes': 0}
     for key in sh_cmd_dict:
@@ -1195,7 +1258,6 @@ def show_filesystem_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show filesystem
-    #Each line being an item in a list
     #Determine if disk space has changed
     sh_cmd = {}
     found_node = False
@@ -1266,7 +1328,6 @@ def show_filesystem_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show filesystem
-    #Each line being an item in a list
     #Determine total free space on all disks, need to improve this
     counters = {'Total Nodes': 0, 'Total Free Space in MB': 0}
     for key in sh_cmd_dict:
@@ -1285,7 +1346,6 @@ def show_route_summary_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show route summary
-    #Each line being an item in a list
     #Determine if number of routes has changed
     sh_cmd = {}
     found_vrf = False
@@ -1371,7 +1431,6 @@ def show_route_summary_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show route summary
-    #Each line being an item in a list
     #Determine if number of routes has changed
     counters = {'Total VRFs': 0, 'Total Routes': 0}
     for key in sh_cmd_dict:
@@ -1385,7 +1444,6 @@ def show_redundancy_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show redundancy
-    #Each line being an item in a list
     #Determine if redundancy state has changed
     sh_cmd = {}
     found_group = False
@@ -1413,7 +1471,6 @@ def show_redundancy_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show redundancy
-    #Each line being an item in a list
     #Determine total process groups and states  
     counters = {'Total Groups': 0, 'Process Groups in Not Ready State': 0, 'Process Groups in Not NSR-Ready State': 0, 'Process Groups in Ready State': 0}
     for key in sh_cmd_dict:
@@ -1431,7 +1488,6 @@ def show_bgp_all_all_summary_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show bgp all all summary
-    #Each line being an item in a list
     #Determine if neighbor state or prefixes have changed
     sh_cmd = {}
     found_AF = False
@@ -1472,7 +1528,6 @@ def show_bgp_all_all_summary_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show bgp all all summary
-    #Each line being an item in a list
     #Determine total AFs and routes
     counters = {'Total AFs': 0, 'Total Neighbors': 0, 'Total Routes': 0}
     regex = re.compile('(\d+)')
@@ -1590,7 +1645,6 @@ def show_l2vpn_xconnect_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show l2vpn xconnect
-    #Each line being an item in a list
     #Determine if state has changed for xconnect
     sh_cmd = {}
     found_start = False
@@ -1618,7 +1672,6 @@ def show_l2vpn_xconnect_totals(sh_cmd):
     ###__version__    = "1.1.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show l2vpn xconnect
-    #Each line being an item in a list
     #Determine xconnect totals  
     counters = {'Total Xconnects': 0, 'Total Xconnects in UP State': 0, 'Total Xconnects in DN State': 0, 'Total Xconnects in any other state': 0}
     for key in sh_cmd:
@@ -1638,11 +1691,10 @@ def show_l2vpn_xconnect_totals(sh_cmd):
     return counters
 def show_l2vpn_bridge_compare(file):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
     ###__version__    = "2.0.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show l2vpn xconnect
-    #Each line being an item in a list
     #Determine if state has changed for bridge domain
     sh_cmd = {}
     found_BG = False
@@ -1673,7 +1725,6 @@ def show_l2vpn_bridge_totals(sh_cmd_dict):
     ###__version__    = "1.1.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show l2vpn xconnect
-    #Each line being an item in a list
     #Determine total circuits and states
     counters = {'Total Circuits': 0, 'ACs in Up State': 0, 'PWs in Up State': 0, 'VNIs in Up State': 0, 'PBBs in Up State': 0}
     for key in sh_cmd_dict:
@@ -1696,7 +1747,6 @@ def show_nv_satellite_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show nv satellite status
-    #Each line being an item in a list
     #Determine if satellite status, icl, etc has changed
     sh_cmd = {}
     regex_string = re.compile('Satellite (\d+)')
@@ -1740,7 +1790,6 @@ def show_nv_satellite_totals(sh_cmd):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show nv satellite status
-    #Each line being an item in a list
     #Determine totals
     counters = {'Total Satellites': 0, 'Total Status Connected Satellites': 0, 'Total Status Not Connected Satellites': 0, 'Total Status Satellite Ready ICL': 0, 'Total ICL': 0, 'Total Status Not Ready ICL': 0}
     regex = re.compile('Satellite Ready')
@@ -1770,7 +1819,6 @@ def show_ospf_neighbor_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show ospf neighbor
-    #Each line being an item in a list
     #Determine if OSPF neighborship has changed
     sh_cmd = {}
     neighbor_regex = re.compile('Neighbors for (OSPF.*)')
@@ -1796,7 +1844,6 @@ def show_ospf_neighbor_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show ospf neighbor
-    #Each line being an item in a list
     #Determine totals for OSPF
     counters = {'Total OSPF Instances': 0, 'Total OSPF Neighbors': 0, 'Total Neighbors in FULL State': 0, 'Total Neighbors in Any Other State': 0}
     regex = re.compile('FULL')
@@ -1817,7 +1864,6 @@ def show_isis_neighbor_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show isis neighbor
-    #Each line being an item in a list
     #Determine isis neighbor details
     sh_cmd = {}
     regex_string = re.compile('IS-IS (\S+) neighbors:')
@@ -1841,7 +1887,6 @@ def show_isis_neighbor_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show isis neighbor
-    #Each line being an item in a list
     #Determine isis neighbor totals
     counters = {'Total ISIS Instances': 0, 'Total ISIS Neighbors': 0, 'Total Neighbors in Up State': 0, 'Total Neighbors in Any Other State': 0}
     regex = re.compile('Up')
@@ -1862,7 +1907,6 @@ def show_mpls_ldp_neighbor_brief_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show mpls ldp neighbor brief
-    #Each line being an item in a list
     #Determine neighborships, labels, etc
     sh_cmd = {}
     found_group = False
@@ -1899,7 +1943,6 @@ def show_mpls_ldp_neighbor_brief_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show mpls ldp neighbor brief
-    #Each line being an item in a list
     #Determine neighborship totals
     counters = {'Total Peers': 0, 'Total Discovery': 0, 'Total GR Neighbors': 0, 'Total NSR Neighbors': 0}
     for key in sh_cmd_dict:
@@ -1934,7 +1977,6 @@ def show_mpls_traffic_eng_tunnels_p2p_compare(file):
     ###__version__    = "1.1.2"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2p
-    #Each line being an item in a list
     #Determine tunnel state
     sh_cmd = {}
     regex_string = re.compile('Signalled-Name:\s(\S+)')
@@ -1969,7 +2011,6 @@ def show_mpls_traffic_eng_tunnels_p2p_totals(sh_cmd_dict):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2p
-    #Each line being an item in a list
     #Determine how many tunnels there are
     counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0}
     for key in sh_cmd_dict:
@@ -1990,7 +2031,6 @@ def show_mpls_traffic_eng_tunnels_p2mp_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2mp
-    #Each line being an item in a list
     #Determine tunnel state
     sh_cmd = {}
     regex_string = re.compile('Signalled-Name:\s(\S+)')
@@ -2023,7 +2063,6 @@ def show_mpls_traffic_eng_tunnels_p2mp_totals(sh_cmd_dict):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show mpls traffic-eng tunnels p2mp
-    #Each line being an item in a list
     #Determine how many tunnels there are
     counters = {'Total Tunnels': 0, 'Total Admin Up Tunnels': 0, 'Total Oper Up Tunnels': 0, 'Total Destinations': 0,'Total Up Destinations': 0, 'Total Any Other State Destinations':0}
     for key in sh_cmd_dict:
@@ -2048,7 +2087,6 @@ def show_bfd_session_compare(file):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show bfd session
-    #Each line being an item in a list
     #Determine BFD state
     sh_cmd = {}
     regex_string = re.compile('^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)')
@@ -2069,7 +2107,6 @@ def show_bfd_session_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show bfd session
-    #Each line being an item in a list
     #Determine how many bfd session are UP or DOWN
     counters = {'Total BFD Sessions': 0, 'Total UP BFD Sessions': 0, 'Total DOWN BFD Sessions': 0}
     for key in sh_cmd_dict:
@@ -2086,7 +2123,6 @@ def show_dhcp_ipv4_proxy_binding_summary_compare(file):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv4 proxy binding summary
-    #Each line being an item in a list
     sh_cmd = {}
     regex_total = re.compile('Total number of clients: (\d+)')
     regex_string = re.compile('(\S+).*\|\s+(\d+)')
@@ -2111,7 +2147,6 @@ def show_dhcp_ipv4_proxy_binding_summary_totals(sh_cmd_dict):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv4 proxy binding summary
-    #Each line being an item in a list
     #Determine if bindings changes
     counters = {'DHCP Total Sessions': 0, 'DHCP INIT Sessions': 0, 'DHCP INIT_DPM_WAITING Sessions': 0, 'DHCP SELECTING Sessions': 0, 'DHCP OFFER_SENT Sessions': 0, 'DHCP REQUESTING Sessions': 0, 'DHCP REQUEST_INIT_DPM_WAITING Sessions': 0, 'DHCP ACK_DPM_WAITING Sessions': 0, 'DHCP BOUND Sessions': 0,
                 'DHCP RENEWING Sessions': 0, 'DHCP INFORMING Sessions': 0, 'DHCP REAUTHORIZE Sessions': 0, 'DHCP DISCONNECT_DPM_WAIT Sessions': 0, 'DHCP ADDR_CHANGE_DPM_WAIT Sessions': 0, 'DHCP DELETING Sessions': 0, 'DHCP DISCONNECTED Sessions': 0, 'DHCP RESTARTING Sessions': 0}
@@ -2158,7 +2193,6 @@ def show_dhcp_ipv4_server_binding_summary_compare(file):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv4 server binding summary
-    #Each line being an item in a list
     sh_cmd = {}
     regex_total = re.compile('Total number of clients: (\d+)')
     regex_string = re.compile('(\S+).*\|\s+(\d+)')
@@ -2183,7 +2217,6 @@ def show_dhcp_ipv4_server_binding_summary_totals(sh_cmd_dict):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv4 server binding summary
-    #Each line being an item in a list
     #Determine if bindings changes
     counters = {'DHCP Total Sessions': 0, 'DHCP INIT Sessions': 0, 'DHCP INIT_DPM_WAITING Sessions': 0, 'DHCP INIT_DAPS_WAITING Sessions': 0, 'DHCP SELECTING Sessions': 0, 'DHCP OFFER_SENT Sessions': 0, 'DHCP REQUESTING Sessions': 0, 'DHCP REQUEST_INIT_DPM_WAITING Sessions': 0, 'DHCP ACK_DPM_WAITING Sessions': 0, 'DHCP BOUND Sessions': 0,
                 'DHCP RENEWING Sessions': 0, 'DHCP INFORMING Sessions': 0, 'DHCP REAUTHORIZE Sessions': 0, 'DHCP DISCONNECT_DPM_WAIT Sessions': 0, 'DHCP ADDR_CHANGE_DPM_WAIT Sessions': 0, 'DHCP DELETING Sessions': 0, 'DHCP DISCONNECTED Sessions': 0, 'DHCP RESTARTING Sessions': 0}
@@ -2232,7 +2265,6 @@ def show_dhcp_ipv6_proxy_binding_summary_compare(file):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv6 proxy binding summary
-    #Each line being an item in a list
     sh_cmd = {}
     regex_total = re.compile('Total number of clients: (\d+)')
     regex_string = re.compile('(\S+\s*\S*\s*\S*)\s*\|\s+(\d+)\s+\|\s+(\d+)')
@@ -2261,7 +2293,6 @@ def show_dhcp_ipv6_proxy_binding_summary_totals(sh_cmd_dict):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv6 proxy binding summary
-    #Each line being an item in a list
     #Determine if bindings changes
     counters = {'DHCP Total Sessions': 0, 'DHCP INIT IA-NA Sessions': 0, 'DHCP SUB VALIDATING IA-NA Sessions': 0, 'DHCP ADDR/PREFIX ALLOCATING IA-NA Sessions': 0, 'DHCP REQUESTING IA-NA Sessions': 0, 'DHCP SESSION RESP PENDING IA-NA Sessions': 0, 'DHCP ROUTE UPDATING IA-NA Sessions': 0, 'DHCP BOUND IA-NA Sessions': 0,
                 'DHCP INIT IA-PD Sessions': 0, 'DHCP SUB VALIDATING IA-PD Sessions': 0, 'DHCP ADDR/PREFIX ALLOCATING IA-PD Sessions': 0, 'DHCP REQUESTING IA-PD Sessions': 0, 'DHCP SESSION RESP PENDING IA-PD Sessions': 0, 'DHCP ROUTE UPDATING IA-PD Sessions': 0, 'DHCP BOUND IA-PD Sessions': 0}
@@ -2299,7 +2330,6 @@ def show_dhcp_ipv6_server_binding_summary_compare(file):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv6 server binding summary
-    #Each line being an item in a list
     sh_cmd = {}
     regex_total = re.compile('Total number of clients: (\d+)')
     regex_string = re.compile('(\S+\s*\S*\s*\S*)\s*\|\s+(\d+)\s+\|\s+(\d+)')
@@ -2328,7 +2358,6 @@ def show_dhcp_ipv6_server_binding_summary_totals(sh_cmd_dict):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show dhcp ipv6 server binding summary
-    #Each line being an item in a list
     #Determine if bindings changes
     counters = {'DHCP Total Sessions': 0, 'DHCP INIT IA-NA Sessions': 0, 'DHCP SUB VALIDATING IA-NA Sessions': 0, 'DHCP ADDR/PREFIX ALLOCATING IA-NA Sessions': 0, 'DHCP REQUESTING IA-NA Sessions': 0, 'DHCP SESSION RESP PENDING IA-NA Sessions': 0, 'DHCP ROUTE UPDATING IA-NA Sessions': 0, 'DHCP BOUND IA-NA Sessions': 0,
                 'DHCP INIT IA-PD Sessions': 0, 'DHCP SUB VALIDATING IA-PD Sessions': 0, 'DHCP ADDR/PREFIX ALLOCATING IA-PD Sessions': 0, 'DHCP REQUESTING IA-PD Sessions': 0, 'DHCP SESSION RESP PENDING IA-PD Sessions': 0, 'DHCP ROUTE UPDATING IA-PD Sessions': 0, 'DHCP BOUND IA-PD Sessions': 0}
@@ -2366,7 +2395,6 @@ def show_ipsla_statistics_compare(file):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show ipsla statistics
-    #Each line being an item in a list
     sh_cmd = {}
     regex_operation = re.compile('Entry number: (\S+)')
     regex_operation_state = re.compile('Operational state of entry    : (\S+)')
@@ -2391,7 +2419,6 @@ def show_ipsla_statistics_totals(sh_cmd_dict):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show ipsla statistics
-    #Each line being an item in a list
     counters = {'IPSLA Total Sessions': 0, 'IPSLA State Active': 0, 'IPSLA State Other': 0, 'IPSLA Return Code OK': 0, 'IPSLA Return Code Other': 0}
     for key in sh_cmd_dict:
         counters['IPSLA Total Sessions'] += 1
@@ -2417,7 +2444,6 @@ def crs_admin_show_controller_fabric_plane_all_detail_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
-    #Each line being an item in a list
     #Determine plane state
     sh_cmd = {}
     regex = re.compile('(\d)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+')
@@ -2447,7 +2473,6 @@ def crs_admin_show_controller_fabric_plane_all_detail_totals(sh_cmd_dict):
     ###__version__    = "1.1.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
-    #Each line being an item in a list
     #Determine Oper State and Bundle States
     counters = {'Total Planes': 0, 'Total Planes in UP UP State': 0, 'Total Planes in Any Other State': 0, 'Total Bundles': 0, 'Total Bundles Down': 0}
     for key in sh_cmd_dict:
@@ -2515,7 +2540,6 @@ def show_subscriber_session_all_summary_compare(file):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show subscriber session all summary
-    #Each line being an item in a list
     sh_cmd = {}
     regex_initializing = re.compile('initializing\s+(\S+)\s+(\S+)\s+(\S+)')
     regex_connecting = re.compile('^\s+connecting\s+(\S+)\s+(\S+)\s+(\S+)')
@@ -2616,7 +2640,6 @@ def show_subscriber_session_all_summary_totals(sh_cmd_dict):
     ###__version__    = "1.1.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show subscriber session all summary
-    #Each line being an item in a list
     #Determine if sessions changed
     counters = {'initializing PPPoE': 0, 'initializing IPSubDHCP': 0, 'initializing IPSubPKT': 0, 'connecting PPPoE': 0, 'connecting IPSubDHCP': 0, 'connecting IPSubPKT': 0, 'connected PPPoE': 0, 'connected IPSubDHCP': 0, 'connected IPSubPKT': 0,
                 'activated PPPoE': 0, 'activated IPSubDHCP': 0, 'activated IPSubPKT': 0, 'idle PPPoE': 0, 'idle IPSubDHCP': 0, 'idle IPSubPKT': 0, 'disconnecting PPPoE': 0, 'disconnecting IPSubDHCP': 0, 'disconnecting IPSubPKT': 0,
@@ -2723,7 +2746,6 @@ def show_pfm_loc_all_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show pfm loc all
-    #Each line being an item in a list
     #Determine alarm state
     sh_cmd = {}
     found_node = False
@@ -2750,7 +2772,6 @@ def show_pfm_loc_all_totals(sh_cmd_dict):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show pfm loc all
-    #Each line being an item in a list
     #Determine alarm state
     counters = {'Total Nodes': 0, 'Total Alarms': 0, 'Total Emergency/Alert alarms': 0, 'Total Critical Alarms': 0, 'Total Error Alarms': 0}
     for key in sh_cmd_dict:
@@ -2765,6 +2786,160 @@ def show_pfm_loc_all_totals(sh_cmd_dict):
                 if "ER" in sh_cmd_dict[key][value]:
                     counters['Total Error Alarms'] += 1 
     return counters
+def show_virtual_service_list_compare(file):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show virtual-service list
+    #Determine alarm state
+    sh_cmd = {}
+    regex_node = re.compile('(\S+)\s+(Activated|Initializing|Installing|Installed|Install Failed|Activating|Activated|Activate Failed|Deactivating|Deactivated|Error)\s+(\S+)\s+(\S+)')
+    for line in file:
+        match = regex_node.search(line)
+        if match:
+            name = match.group(1)
+            sh_cmd[name] = {}
+            sh_cmd[name]['Status'] = match.group(2) 
+            sh_cmd[name]['Package'] = match.group(3) 
+            sh_cmd[name]['Node'] = match.group(4) 
+    return sh_cmd
+def show_virtual_service_list_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show virtual-service list
+    #Determine alarm state
+    counters = {'Total Virtual Services': 0, 'Total Virtual Services in Activated State': 0, 'Total Virtual Services NOT in Activated State': 0}
+    for key in sh_cmd_dict:
+        counters['Total Virtual Services'] += 1
+        for value in sh_cmd_dict[key]:
+            if value == 'Status':
+                if "Activated" in sh_cmd_dict[key][value]:
+                    counters['Total Virtual Services in Activated State'] += 1
+                else:
+                    counters['Total Virtual Services NOT in Activated State'] += 1 
+    return counters
+def show_services_interface_compare(file):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show services interface
+    #Determine alarm state
+    sh_cmd = {}
+    regex_int = re.compile('interface (\S+).+state (\S+);')
+    regex_lc_state = re.compile('^\s+(\S+):\sstate\s(\S+);')
+    for line in file:
+        match = regex_int.search(line)
+        if match:
+            interface = match.group(1)
+            sh_cmd[interface] = {}
+            sh_cmd[interface]['State'] = match.group(2)
+        match2 = regex_lc_state.search(line)
+        if match2:
+            sh_cmd[interface][match2.group(1)] = match2.group(2) 
+    return sh_cmd
+def show_services_interface_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show services interface
+    #Determine alarm state
+    counters = {'Total Virtual Interfaces': 0, 'Total Virtual Interfaces In Up State': 0, 'Total Virtual Interfaces Not Up': 0, 'Total Virtual Interfaces Locations In Up State': 0, 'Total Virtual Interfaces Locations Not Up': 0 }
+    for key in sh_cmd_dict:
+        counters['Total Virtual Interfaces'] += 1
+        for value in sh_cmd_dict[key]:
+            if value == 'State':
+                if "up" in sh_cmd_dict[key][value]:
+                    counters['Total Virtual Interfaces In Up State'] += 1
+                else:
+                    counters['Total Virtual Interfaces Not Up'] += 1 
+            else:
+                if 'up' in sh_cmd_dict[key][value]:
+                    counters['Total Virtual Interfaces Locations In Up State'] += 1
+                else:
+                    counters['Total Virtual Interfaces Locations Not Up'] += 1
+    return counters
+def show_services_role_detail_compare(file):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show services role detail
+    #Determine alarm state
+    sh_cmd = {}
+    regex_node = re.compile('Node (\S+)')
+    regex_role = re.compile('Configured Role:(.+)Enacted Role:(.+)')
+    regex_services = re.compile('Enabled Services:(.+)')
+    for line in file:
+        match = regex_node.search(line)
+        if match:
+            name = match.group(1)
+            sh_cmd[name] = {}
+        match2 = regex_role.search(line)
+        if match2:
+            sh_cmd[name]['Configured Role'] = match2.group(1) 
+            sh_cmd[name]['Enacted Role'] = match2.group(2) 
+        match3 = regex_services.search(line)
+        if match3:
+            sh_cmd[name]['Enabled Services'] = match3.group(1) 
+    return sh_cmd
+def show_services_role_detail_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show services role detail
+    #Determine alarm state
+    counters = {}
+    return counters
+def show_services_redundancy_compare(file):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show services redundancy
+    #Determine alarm state
+    sh_cmd = {}
+    found_services = False
+    regex_service= re.compile('^(\S+)\s+(\S+)\s+(\S+\s\S+)(\s+(\S+\s\S+))?')
+    for line in file:
+        if '----------------' in line:
+            found_services = True
+        if found_services == True:
+            match = regex_service.search(line)
+            if match:
+                name = str(match.group(1) + ' ' + match.group(2))
+                sh_cmd[name] = {}
+                sh_cmd[name]['Active'] = match.group(3)
+                if match.group(5):
+                    sh_cmd[name]['Standby'] = match.group(5) 
+    return sh_cmd
+def show_services_redundancy_totals(sh_cmd_dict):
+    ###__author__     = "Sam Milstead"
+    ###__copyright__  = "Copyright 2021 (C) Cisco TAC"
+    ###__version__    = "2.0.2"
+    ###__status__     = "alpha"
+    #Perform some magic on the pre and post lines of output for show services redundancy
+    #Determine alarm state
+    counters = {'Total Virtual Services': 0, 'Total Virtual Services in Active/Active State': 0, 'Total Virtual Services NOT in Active/Active State': 0, 'Total Virtual Services in Standby/Standby State': 0, 'Total Virtual Services NOT in Standby/Standby State': 0 }
+    for key in sh_cmd_dict:
+        counters['Total Virtual Services'] += 1
+        for value in sh_cmd_dict[key]:
+            if value == 'Active':
+                if "Active" in sh_cmd_dict[key][value]:
+                    counters['Total Virtual Services in Active/Active State'] += 1
+                else:
+                    counters['Total Virtual Services NOT in Active/Active State'] += 1 
+            elif value == 'Standby':
+                if "Standby" in sh_cmd_dict[key][value]:
+                    counters['Total Virtual Services in Standby/Standby State'] += 1
+                else:
+                    counters['Total Virtual Services NOT in Standby/Standby State'] += 1 
+    return counters
 ####################
 #NCS5500 PD        #
 ####################
@@ -2774,7 +2949,6 @@ def show_controllers_npu_resources_all_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show controllers npu resources all loc all
-    #Each line being an item in a list
     #Determine NPU resources
     sh_cmd = {}
     found_location = False
@@ -2828,7 +3002,6 @@ def show_controllers_npu_resources_all_totals(sh_cmd_dict):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show controllers npu resources all loc all
-    #Each line being an item in a list
     #Determine NPU OOR Status
     counters = {'lem Green State': 0, 'lem Other State': 0, 'lpm Green State': 0, 'lpm Other State': 0, 'encap Green State': 0, 'encap Other State': 0,
                 'fec Green State': 0, 'fec Other State': 0, 'ecmp_fec Green State': 0, 'ecmp_fec Other State': 0}
@@ -2867,7 +3040,6 @@ def show_controllers_fia_diag_alloc_all_compare(file):
     ###__version__    = "1.1.1"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show controllers fia diagshell 0 "diag alloc all" location all
-    #Each line being an item in a list
     #Determine resource allocation
     sh_cmd = {}
     found_location = False
@@ -2894,7 +3066,6 @@ def show_controllers_fia_diag_alloc_all_totals(sh_cmd_dict):
     ###__version__    = "1.0.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show controllers npu resources all loc all
-    #Each line being an item in a list
     #Determine NPU OOR Status
     counters = {}
     return counters 
@@ -2907,7 +3078,6 @@ def ncs6k_admin_show_controller_fabric_plane_all_detail_compare(file):
     ###__version__    = "1.1.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
-    #Each line being an item in a list
     #Determine plane state
     sh_cmd = {}
     regex = re.compile('(\d)\s+(\S+)\s+(\S+)\s+\S+\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)')
@@ -2930,7 +3100,6 @@ def ncs6k_admin_show_controller_fabric_plane_all_detail_totals(sh_cmd_dict):
     ###__version__    = "1.1.0"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for admin show controller fabric plane all detail
-    #Each line being an item in a list
     #Determine Oper State and Bundle States
     counters = {'Total Planes': 0, 'Total Planes in UP UP State': 0, 'Total Planes in Any Other State': 0, 'Total Bundles': 0, 'Total Bundles Down': 0}
     for key in sh_cmd_dict:

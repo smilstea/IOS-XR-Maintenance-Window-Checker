@@ -1130,24 +1130,28 @@ def show_install_totals(sh_cmd_dict):
     return counters
 def show_interface_compare(file):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.1.2"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show interface description
     #Determine if status for an interface has changed
     found_start = False
     regex_string = re.compile('(\S+)\s+(\S+)\s+(\S+)(\s+(\S+.*))?')
     sh_int = {}
+    found_int = False
     for line in file:
-        match = regex_string.search(line)
-        if match:
-            sh_int[match.group(1)] = {}
-            sh_int[match.group(1)]['status'] = match.group(2)
-            sh_int[match.group(1)]['protocol'] = match.group(3)
-            try:
-                sh_int[match.group(1)]['desc'] = match.group(5)
-            except Exception as e:
-                sh_int[match.group(1)]['desc'] = ' '
+        if '--------------' in line:
+            found_int = True
+        elif found_int == True:
+            match = regex_string.search(line)
+            if match:
+                sh_int[match.group(1)] = {}
+                sh_int[match.group(1)]['status'] = match.group(2)
+                sh_int[match.group(1)]['protocol'] = match.group(3)
+                try:
+                    sh_int[match.group(1)]['desc'] = match.group(5)
+                except Exception as e:
+                    sh_int[match.group(1)]['desc'] = ' '
     #We get an error message for null keys so we need to handle those
     #"dictionary changed size during iteration"
     for key in list(sh_int):
@@ -1495,7 +1499,7 @@ def show_bgp_all_all_summary_compare(file):
     AF_regex = re.compile('Address Family:\s(\S+\s\S+)')
     regex_string = re.compile('^((([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+)')
     regex_string2 = re.compile('^((([a-f0-9:]+:+)+[a-f0-9]+)|\d+\.\d+\.\d+\.\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
-    ipv6_regex_line2 = re.compile('^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
+    ipv6_regex_line2 = re.compile('\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
     for line in file:
         match = AF_regex.search(line)
         if match:
@@ -1543,14 +1547,14 @@ def show_bgp_all_all_summary_totals(sh_cmd_dict):
     return counters
 def show_bgp_vrf_all_ipv4_summary_compare(file):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.1.2"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show bgp vrf all ipv4 <> summary
     #Determine if neighbor state or prefixes have changed
     sh_cmd = {}
     found_VRF = False
-    regex_string = re.compile('(\d+\.\d+\.\d+\.\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s\S+\s+(\S+)')
+    regex_string = re.compile('(\d+\.\d+\.\d+\.\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
     vrf_regex = re.compile('VRF: (\S+)')
     for line in file:
         match = vrf_regex.search(line)
@@ -1585,16 +1589,16 @@ def show_bgp_vrf_all_ipv4_summary_totals(sh_cmd_dict):
     return counters
 def show_bgp_vrf_all_ipv6_summary_compare(file):
     ###__author__     = "Sam Milstead"
-    ###__copyright__  = "Copyright 2020 (C) Cisco TAC"
-    ###__version__    = "1.1.2"
+    ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
+    ###__version__    = "2.0.3"
     ###__status__     = "alpha"
     #Perform some magic on the pre and post lines of output for show bgp vrf all ipv6 <> summary
     #Determine if neighbor state or prefixes have changed
     sh_cmd = {}
     found_VRF = False
     neighbor_found = False
-    regex_string = re.compile('(([a-f0-9:]+:+)+[a-f0-9]+)')
-    ipv6_regex_line2 = re.compile('^\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
+    regex_string = re.compile('^(([a-f0-9:]+:+)+[a-f0-9]+)')
+    ipv6_regex_line2 = re.compile('\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+\S+\s+(\S+)')
     vrf_regex = re.compile('VRF: (\S+)')
     for line in file:
         match = vrf_regex.search(line)

@@ -2,7 +2,7 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "2.0.2"
+__version__    = "2.0.3"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"

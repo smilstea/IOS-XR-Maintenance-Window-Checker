@@ -3,7 +3,7 @@
 __author__     = "Sam Milstead"
 __copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
 __credits__    = "Sam Milstead"
-__version__    = "2.0.2"
+__version__    = "2.0.4"
 __maintainer__ = "Sam Milstead"
 __email__      = "smilstea@cisco.com"
 __status__     = "alpha"
@@ -146,11 +146,11 @@ def task():
 def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands, timeout, vsm_commands):
     ###__author__     = "Sam Milstead"
     ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
-    ###__version__    = "2.0.2"
+    ###__version__    = "2.0.4"
     ###__status__     = "alpha"
     #ssh login and actions
-    connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr), timeout=300, maxread=1)
-    i = connection.expect (['Permission denied|permission denied', 'Terminal type|terminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed'],  timeout=30)
+    connection = pexpect.spawn('ssh %s@%s' % (username, ipv4_addr), timeout=30, maxread=1)
+    i = connection.expect (['ermission denied', 'erminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed'],  timeout=30)
     if i == 0:
         print("permission denied")
         sys.exit(3)
@@ -167,13 +167,33 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     elif i == 5:
         connection.sendline('yes')
         connection.expect('.* password:')
+    elif i == 6:
+        connection.sendline(password)
     elif i == 7:
         print("Authentication failure")
         sys.exit(3)
-    connection.sendline(password)
-    i = connection.expect(['Permission denied|permission denied', r'RP\S+#'])
+    i = connection.expect (['ermission denied', 'erminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed', r'RP\S+#'],  timeout=30)
     if i == 0:
         print("permission denied")
+        sys.exit(3)
+    elif i == 1:
+        print("terminal type")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 4:
+        print("connection closed by host")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 5:
+        connection.sendline('yes')
+        connection.expect('.* password:')
+    elif i == 6:
+        password = getpass.getpass(prompt="Password invalid, please enter your password:")
+        connection.sendline(password)
+    elif i == 7:
+        print("Authentication failure")
         sys.exit(3)
     connection.sendline(b"term len 0")
     connection.expect(r'RP\S+#')
@@ -184,7 +204,7 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     connection.expect(r'RP\S+#')
     data = connection.before
     data += connection.after
-    data = data.decode('utf-8')
+    data = data.decode('utf-8', 'ignore')
     outfile.write(data)
     if 'cisco ASR9K' in data:
         commands.extend(asr9k_commands)
@@ -200,14 +220,12 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
     i = 0
     for command in commands:
         i += 1
-        connection.sendline(command.encode('utf-8'))
+        connection.sendline(command.encode('utf-8', 'ignore'))
         data = ""
-        n = 1
-        while n == 1:
-            try:
-                data += connection.read_nonblocking(size=999,timeout=timeout).decode('utf-8')
-            except pexpect.exceptions.TIMEOUT:
-                n = 0
+        connection.expect(r'RP\S+#', timeout=timeout)
+        data = connection.before.decode('utf-8', 'ignore')
+        outfile.write(data)
+        data = connection.after.decode('utf-8', 'ignore')
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
     connection.close()
@@ -215,17 +233,58 @@ def sshconnect(ipv4_addr, username, password, outfile, commands, crs_commands, a
 def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands, asr9k_commands, ncs5500_commands, ncs6000_commands, timeout, vsm_commands):
     ###__author__     = "Sam Milstead"
     ###__copyright__  = "Copyright 2020-2021 (C) Cisco TAC"
-    ###__version__    = "2.0.2"
+    ###__version__    = "2.0.4"
     ###__status__     = "alpha"
     #telnet login and actions
-    connection = pexpect.spawn('telnet ' + ipv4_addr, timeout=300, maxread=1)
+    connection = pexpect.spawn('telnet ' + ipv4_addr, timeout=30, maxread=1)
     connection.expect('Username:')
     connection.sendline(username)
     connection.expect('Password:')
     connection.sendline(password)
-    i = connection.expect(['Username:', r'RP\S+#'])
+    i = connection.expect (['ermission denied', 'erminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed'],  timeout=30)
     if i == 0:
         print("permission denied")
+        sys.exit(3)
+    elif i == 1:
+        print("terminal type")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 4:
+        print("connection closed by host")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 5:
+        connection.sendline('yes')
+        connection.expect('.* password:')
+    elif i == 6:
+        connection.sendline(password)
+    elif i == 7:
+        print("Authentication failure")
+        sys.exit(3)
+    i = connection.expect (['ermission denied', 'erminal type', pexpect.EOF, pexpect.TIMEOUT,'connection closed by remote host', 'continue connecting (yes/no)?', 'password:', 'Authentication failed', r'RP\S+#'],  timeout=30)
+    if i == 0:
+        print("permission denied")
+        sys.exit(3)
+    elif i == 1:
+        print("terminal type")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 4:
+        print("connection closed by host")
+        print(connection.before)
+        print(connection.after)
+        sys.exit(3)
+    elif i == 5:
+        connection.sendline('yes')
+        connection.expect('.* password:')
+    elif i == 6:
+        password = getpass.getpass(prompt="Password invalid, please enter your password:")
+        connection.sendline(password)
+    elif i == 7:
+        print("Authentication failure")
         sys.exit(3)
     connection.sendline(b"term len 0")
     connection.expect(r'RP\S+#')
@@ -236,7 +295,7 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     connection.expect(r'RP\S+#')
     data = connection.before
     data += connection.after
-    data = data.decode('utf-8')
+    data = data.decode('utf-8', 'ignore')
     if 'cisco ASR9K' in data:
         commands.extend(asr9k_commands)
         if vsm == True:
@@ -252,14 +311,12 @@ def telnetconnect(ipv4_addr, username, password, outfile, commands, crs_commands
     i = 0
     for command in commands:
         i += 1
-        connection.sendline(command.encode('utf-8'))
+        connection.sendline(command.encode('utf-8', 'ignore'))
         data = ""
-        n = 1
-        while n == 1:
-            try:
-                data += connection.read_nonblocking(size=999,timeout=timeout).decode('utf-8')
-            except pexpect.exceptions.TIMEOUT:
-                n = 0
+        connection.expect(r'RP\S+#', timeout=timeout)
+        data = connection.before.decode('utf-8', 'ignore')
+        outfile.write(data)
+        data = connection.after.decode('utf-8', 'ignore')
         outfile.write(data)
         print("Command " + str(i) + " of " + str(commands_len) + " complete")
     connection.close()

@@ -51,8 +51,7 @@ Specifies the timeout from commands, by default this is 10s for a few reasons.
 2. Some commands pause mid-way through output
 3. General delay in getting data output
 This allows for the collection of outputs properly as they are generated and a pause in case a command does not output immediately, pauses, or python catches up to the end of the available data
-Using this keyword and changing the timeout is NOT recommended.
-The downside is that after a command stops outputing data there will be a 10s delay before executing the next command, with 30 or 40 commands that means 300 or 400 extra seconds.
+Using this keyword and changing the timeout is NOT recommended unless a command is taking longer than 10s to complete.
 
  <br>
  

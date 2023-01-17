@@ -1,4 +1,8 @@
 
+**About**
+<br>
+IOS XR Maintenance Window Checker is a collection of scripts used to gather data from an IOS XR router multiple times and in a deterministic way find the differences and output any changes in a simple to read manner.
+
 **Installation Notes**
 
 <br>
